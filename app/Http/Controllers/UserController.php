@@ -12,7 +12,7 @@ class UserController extends Controller
 {
     public function login(Request $request)
     {
-        $dataReq = $request->json()->all();        
+        $dataReq = $request->json()->all();
         $data = [
             'nick_name' => $dataReq['username'],
             'password' => $dataReq['password'],
@@ -32,5 +32,11 @@ class UserController extends Controller
                 ]
             ], 401));
         }
+    }
+
+    public function logout(Request $request)
+    {
+        $data = $request->user('sanctum')->currentAccessToken()->delete();
+        return ['message' => 'Log out successfully', $data];
     }
 }
