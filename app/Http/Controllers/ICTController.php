@@ -7,8 +7,9 @@ use Illuminate\Support\Facades\DB;
 
 class ICTController extends Controller
 {
-    function search(Request $request) {
-        $data = DB::connection('sqlsrv_lot_trace')->table('ICT_CDT');
+    function search(Request $request)
+    {
+        $data = DB::connection('sqlsrv_lot_trace')->table('ICT_CDT')->limit(15);
         return ['data' => $data->get()];
     }
 }
