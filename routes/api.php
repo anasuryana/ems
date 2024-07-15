@@ -22,6 +22,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
     Route::prefix('ict')->group(function () {
         Route::get('search-paginate', [ICTController::class, 'searchPaginate']);
+        Route::get('to-spreadsheet', [ICTController::class, 'toSpreadsheet']);
     });
 });
 
