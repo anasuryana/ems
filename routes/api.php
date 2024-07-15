@@ -21,15 +21,12 @@ Route::middleware('auth:sanctum')->group(function () {
         return $request->user();
     });
     Route::prefix('ict')->group(function () {
-        Route::get('search', [ICTController::class, 'search']);
+        Route::get('search-paginate', [ICTController::class, 'searchPaginate']);
     });
 });
 
 Route::prefix('users')->group(function () {
     Route::post('login', [UserController::class, 'login']);
-    Route::get('', function (Request $request) {
-        return ['nah itu' . $request->username];
-    });
     Route::delete('logout', [UserController::class, 'logout'])->middleware('auth:sanctum');
 });
 
