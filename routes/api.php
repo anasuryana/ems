@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ICTController;
 use App\Http\Controllers\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -15,15 +16,19 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/user', function (Request $request) {
+        return $request->user();
+    });
+    Route::prefix('ict')->group(function () {
+        Route::get('search-paginate', [ICTController::class, 'searchPaginate']);
+        Route::get('to-spreadsheet', [ICTController::class, 'toSpreadsheet']);
+    });
 });
 
 Route::prefix('users')->group(function () {
     Route::post('login', [UserController::class, 'login']);
-    Route::get('', function(Request $request) {
-        return ['nah itu' . $request->username];
-    });
+    Route::delete('logout', [UserController::class, 'logout'])->middleware('auth:sanctum');
 });
 
 Route::post('/welcome', function () {
