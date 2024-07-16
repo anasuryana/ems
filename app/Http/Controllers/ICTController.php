@@ -18,9 +18,9 @@ class ICTController extends Controller
     {
         $whereParam = $this->_filterRequest($request);
 
-        $data = DB::connection('sqlsrv_lot_trace')->table('ICT_CDT')
+        $data = DB::connection('sqlsrv_lot_trace')->table('VICT_CDT')
             ->where($whereParam)
-            ->orderBy('ICT_Date')->paginate(250);
+            ->orderBy('ICTDATE')->paginate(250);
         return ['data' => $data];
     }
 
@@ -28,10 +28,10 @@ class ICTController extends Controller
     {
         $whereParam = [];
         if ($request->period1) {
-            $whereParam[] = ['ICT_Date', '>=',  $request->period1];
+            $whereParam[] = ['ICTDATE', '>=',  $request->period1];
         }
         if ($request->period2) {
-            $whereParam[] = ['ICT_Date', '<=',  $request->period2];
+            $whereParam[] = ['ICTDATE', '<=',  $request->period2];
         }
         if ($request->ict_no) {
             $whereParam[] = ['ICT_No', 'like', '%' . $request->ict_no . '%'];
@@ -55,9 +55,9 @@ class ICTController extends Controller
     {
 
         $whereParam = $this->_filterRequest($request);
-        $data = DB::connection('sqlsrv_lot_trace')->table('ICT_CDT')
+        $data = DB::connection('sqlsrv_lot_trace')->table('VICT_CDT')
             ->where($whereParam)
-            ->orderBy('ICT_Date')->get();
+            ->orderBy('ICTDATE')->get();
         $spreadSheet = new Spreadsheet();
         $sheet = $spreadSheet->getActiveSheet();
         $sheet->setTitle('ICT Log');
