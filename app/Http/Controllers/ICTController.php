@@ -130,4 +130,45 @@ class ICTController extends Controller
             ->update(['ICT_Lupdt' . $request->user()->role_id => date('Y-m-d H:i:s')]);
         return ['message' => 'Update successfully'];
     }
+
+    function setRemark(Request $request)
+    {
+        $currentRemark = DB::connection('sqlsrv_lot_trace')->table('ICT_CDT')
+            ->where('ICT_Date', $request->ICT_Date)
+            ->where('ICT_Time', $request->ICT_Time)
+            ->where('ICT_No', $request->ICT_No)
+            ->where('ICT_Model', $request->ICT_Model)
+            ->where('ICT_NFile', $request->ICT_NFile)
+            ->where('ICT_Step', $request->ICT_Step)
+            ->where('ICT_Device', $request->ICT_Device)
+            ->where('ICT_Item', $request->ICT_Item)
+            ->where('ICT_BValue', $request->ICT_BValue)
+            ->where('ICT_AValue', $request->ICT_AValue)
+            ->first('ICT_Remark');
+
+        $newRemarkFix = NULL;
+
+        if ($currentRemark->ICT_Remark) {
+            $_remark = json_decode($currentRemark->ICT_Remark, true);
+            $_remark[] = ['userid' => $request->user()->nick_name, 'remark' => $request->ICT_RemarkNew];
+            $newRemarkFix = json_encode($_remark);
+        } else {
+            $rowRemark = [];
+            $rowRemark[] = ['userid' => $request->user()->nick_name, 'remark' => $request->ICT_RemarkNew];
+            $newRemarkFix = json_encode($rowRemark);
+        }
+        DB::connection('sqlsrv_lot_trace')->table('ICT_CDT')
+            ->where('ICT_Date', $request->ICT_Date)
+            ->where('ICT_Time', $request->ICT_Time)
+            ->where('ICT_No', $request->ICT_No)
+            ->where('ICT_Model', $request->ICT_Model)
+            ->where('ICT_NFile', $request->ICT_NFile)
+            ->where('ICT_Step', $request->ICT_Step)
+            ->where('ICT_Device', $request->ICT_Device)
+            ->where('ICT_Item', $request->ICT_Item)
+            ->where('ICT_BValue', $request->ICT_BValue)
+            ->where('ICT_AValue', $request->ICT_AValue)
+            ->update(['ICT_Remark' => $newRemarkFix]);
+        return ['message' => 'Update successfully', $request->all()];
+    }
 }
