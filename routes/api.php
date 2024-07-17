@@ -24,6 +24,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('search-paginate', [ICTController::class, 'searchPaginate']);
         Route::get('to-spreadsheet', [ICTController::class, 'toSpreadsheet']);
         Route::put('check', [ICTController::class, 'setCheck']);
+        Route::put('remark', [ICTController::class, 'setRemark']);
     });
 });
 
