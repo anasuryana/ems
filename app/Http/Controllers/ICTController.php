@@ -53,7 +53,6 @@ class ICTController extends Controller
 
     function toSpreadsheet(Request $request)
     {
-
         $whereParam = $this->_filterRequest($request);
         $data = DB::connection('sqlsrv_lot_trace')->table('VICT_CDT')
             ->where($whereParam)
@@ -85,7 +84,7 @@ class ICTController extends Controller
 
         $i = 3;
         foreach ($data as $r) {
-            $sheet->setCellValue([1, $i], $r->ICT_Date);
+            $sheet->setCellValue([1, $i], $r->ICTDATE);
             $sheet->setCellValue([2, $i], $r->ICT_Time);
             $sheet->setCellValue([3, $i], $r->ICT_No);
             $sheet->setCellValue([4, $i], $r->ICT_Model);
@@ -113,5 +112,22 @@ class ICTController extends Controller
         header('Cache-Control: max-age=0');
         header('Access-Control-Allow-Origin: *');
         $writer->save('php://output');
+    }
+
+    function setCheck(Request $request)
+    {
+        DB::connection('sqlsrv_lot_trace')->table('ICT_CDT')
+            ->where('ICT_Date', $request->ICT_Date)
+            ->where('ICT_Time', $request->ICT_Time)
+            ->where('ICT_No', $request->ICT_No)
+            ->where('ICT_Model', $request->ICT_Model)
+            ->where('ICT_NFile', $request->ICT_NFile)
+            ->where('ICT_Step', $request->ICT_Step)
+            ->where('ICT_Device', $request->ICT_Device)
+            ->where('ICT_Item', $request->ICT_Item)
+            ->where('ICT_BValue', $request->ICT_BValue)
+            ->where('ICT_AValue', $request->ICT_AValue)
+            ->update(['ICT_Lupdt' . $request->user()->role_id => date('Y-m-d H:i:s')]);
+        return ['message' => 'Update successfully'];
     }
 }
