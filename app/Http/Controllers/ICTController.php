@@ -80,7 +80,9 @@ class ICTController extends Controller
         $sheet->setCellValue([17, 2], 'Sanawi');
         $sheet->setCellValue([18, 2], 'Kiswanto');
         $sheet->setCellValue([19, 2], 'Muttaqin');
-        $sheet->setCellValue([20, 1], 'Remark');
+        $sheet->setCellValue([20, 1], 'Approval');
+        $sheet->setCellValue([20, 2], 'Mr Syofyan');
+        $sheet->setCellValue([21, 1], 'Remark');
 
         $i = 3;
         foreach ($data as $r) {
@@ -95,6 +97,16 @@ class ICTController extends Controller
             $sheet->setCellValue([9, $i], $r->ICT_BValue);
             $sheet->setCellValue([10, $i], $r->ICT_AValue);
             $sheet->setCellValue([11, $i], $r->ICT_Lupby);
+            $sheet->setCellValue([12, $i], $r->ICT_Level);
+            $sheet->setCellValue([13, $i], $r->ICT_PFile);
+            $sheet->setCellValue([14, $i], $this->_displayDate($r->ICT_Lupdt1));
+            $sheet->setCellValue([15, $i], $this->_displayDate($r->ICT_Lupdt2));
+            $sheet->setCellValue([16, $i], $this->_displayDate($r->ICT_Lupdt3));
+            $sheet->setCellValue([17, $i], $this->_displayDate($r->ICT_Lupdt4));
+            $sheet->setCellValue([18, $i], $this->_displayDate($r->ICT_Lupdt5));
+            $sheet->setCellValue([19, $i], $this->_displayDate($r->ICT_Lupdt6));
+            $sheet->setCellValue([20, $i], $this->_displayDate($r->ICT_LupdtApp));
+            $sheet->setCellValue([21, $i], $r->ICT_Remark);
             $i++;
         }
 
@@ -112,6 +124,11 @@ class ICTController extends Controller
         header('Cache-Control: max-age=0');
         header('Access-Control-Allow-Origin: *');
         $writer->save('php://output');
+    }
+
+    function _displayDate($data)
+    {
+        return substr($data, 0, 4) == '1900' ? null : $data;
     }
 
     function setCheck(Request $request)
