@@ -20,7 +20,9 @@ class ICTController extends Controller
 
         $data = DB::connection('sqlsrv_lot_trace')->table('VICT_CDT')
             ->where($whereParam)
-            ->orderBy('ICTDATE')->paginate(250);
+            ->orderBy('ICTDATE')
+            ->orderBy('ICT_Time')
+            ->paginate(250);
         return ['data' => $data];
     }
 
@@ -56,7 +58,9 @@ class ICTController extends Controller
         $whereParam = $this->_filterRequest($request);
         $data = DB::connection('sqlsrv_lot_trace')->table('VICT_CDT')
             ->where($whereParam)
-            ->orderBy('ICTDATE')->get();
+            ->orderBy('ICTDATE')
+            ->orderBy('ICT_Time')
+            ->get();
         $spreadSheet = new Spreadsheet();
         $sheet = $spreadSheet->getActiveSheet();
         $sheet->setTitle('ICT Log');
