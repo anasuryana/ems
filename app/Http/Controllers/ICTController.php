@@ -22,7 +22,7 @@ class ICTController extends Controller
             ->where($whereParam)
             ->orderBy('ICTDATE')
             ->orderBy('ICT_Time')
-            ->paginate(250);
+            ->paginate(500);
         return ['data' => $data];
     }
 
@@ -35,6 +35,30 @@ class ICTController extends Controller
         if ($request->period2) {
             $whereParam[] = ['ICTDATE', '<=',  $request->period2];
         }
+        if ($request->ict_no) {
+            $whereParam[] = ['ICT_No', 'like', '%' . $request->ict_no . '%'];
+        }
+        if ($request->model) {
+            $whereParam[] = ['ICT_Model', 'like', '%' . $request->model . '%'];
+        }
+        if ($request->step) {
+            $whereParam[] = ['ICT_Step', 'like', '%' . $request->step . '%'];
+        }
+        if ($request->file_name) {
+            $whereParam[] = ['ICT_NFile', 'like', '%' . $request->file_name . '%'];
+        }
+        if ($request->item) {
+            $whereParam[] = ['ICT_Item', 'like', '%' . $request->item . '%'];
+        }
+        if ($request->operator_name) {
+            $whereParam[] = ['ICT_Lupby', 'like', '%' . $request->operator_name . '%'];
+        }
+        return $whereParam;
+    }
+
+    function _filterRequestApproval($request)
+    {
+        $whereParam = [];
         if ($request->ict_no) {
             $whereParam[] = ['ICT_No', 'like', '%' . $request->ict_no . '%'];
         }
@@ -153,6 +177,26 @@ class ICTController extends Controller
             ->where('ICT_AValue', $request->ICT_AValue)
             ->update(['ICT_Lupdt' . ($request->user()->role_id == 7 ? 'App' : $request->user()->role_id)  => date('Y-m-d H:i:s')]);
         return ['message' => 'Update successfully'];
+    }
+
+    function setCheckSome(Request $request)
+    {
+        $whereParam = $this->_filterRequest($request);
+        $dataFirst = DB::connection('sqlsrv_lot_trace')->table('VICT_CDT')
+            ->where($whereParam)
+            ->whereNull('ICT_LupdtApp')
+            ->whereDate('ICT_Lupdt6', '>', '2024-01-01')
+            ->first('ICT_Date');
+
+        $whereParamUpdate = $this->_filterRequestApproval($request);
+        $whereParamUpdate[] = ['ICT_Date', '=', $dataFirst->ICT_Date];
+
+        DB::connection('sqlsrv_lot_trace')->table('ICT_CDT')
+            ->where($whereParamUpdate)
+            ->whereNull('ICT_LupdtApp')
+            ->whereDate('ICT_Lupdt6', '>', '2024-01-01')
+            ->update(['ICT_LupdtApp'  => date('Y-m-d H:i:s')]);
+        return ['message' => 'Approved successfully', $whereParamUpdate];
     }
 
     function setRemark(Request $request)
