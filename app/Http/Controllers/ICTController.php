@@ -41,6 +41,9 @@ class ICTController extends Controller
         if ($request->model) {
             $whereParam[] = ['ICT_Model', 'like', '%' . $request->model . '%'];
         }
+        if ($request->step) {
+            $whereParam[] = ['ICT_Step', 'like', '%' . $request->step . '%'];
+        }
         if ($request->file_name) {
             $whereParam[] = ['ICT_NFile', 'like', '%' . $request->file_name . '%'];
         }
