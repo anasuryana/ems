@@ -17,13 +17,28 @@ class ICTController extends Controller
     function searchPaginate(Request $request)
     {
         $whereParam = $this->_filterRequest($request);
-
         $data = DB::connection('sqlsrv_lot_trace')->table('VICT_CDT')
             ->where($whereParam)
             ->orderBy('ICTDATE')
-            ->orderBy('ICT_Time')
-            ->paginate(500);
-        return ['data' => $data];
+            ->orderBy('ICT_Time');
+        switch ($request->self_check) {
+            case '1':
+                if ($request->user()->role_id == 7) {
+                    $data->whereNull('ICT_LupdtApp');
+                } else {
+                    $data->whereDate('ICT_Lupdt' . $request->user()->role_id, '<', '2024-01-01');
+                }
+                break;
+            case '2':
+                if ($request->user()->role_id == 7) {
+                    $data->whereNotNull('ICT_LupdtApp');
+                } else {
+                    $data->whereDate('ICT_Lupdt' . $request->user()->role_id, '>=', '2024-01-01');
+                }
+                break;
+        }
+
+        return ['data' => $data->paginate(500)];
     }
 
     function _filterRequest($request)
@@ -53,6 +68,7 @@ class ICTController extends Controller
         if ($request->operator_name) {
             $whereParam[] = ['ICT_Lupby', 'like', '%' . $request->operator_name . '%'];
         }
+
         return $whereParam;
     }
 
