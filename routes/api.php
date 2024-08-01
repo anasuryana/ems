@@ -29,6 +29,10 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 });
 
+Route::prefix('ict')->group(function () {
+    Route::get('to-spreadsheet-as-reminder', [ICTController::class, 'reminderAsSpreadsheet']);
+});
+
 Route::prefix('users')->group(function () {
     Route::post('login', [UserController::class, 'login']);
     Route::delete('logout', [UserController::class, 'logout'])->middleware('auth:sanctum');

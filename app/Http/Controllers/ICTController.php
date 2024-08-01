@@ -255,4 +255,82 @@ class ICTController extends Controller
             ->update(['ICT_Remark' => $newRemarkFix]);
         return ['message' => 'Update successfully', $request->all()];
     }
+
+    function reminderAsSpreadsheet(Request $request)
+    {
+        $totalEditData = DB::connection('sqlsrv_lot_trace')
+            ->table('VICT_CDT')->whereYear('ICTDATE', date('Y'))
+            ->whereMonth('ICTDATE', date('m'))->count();
+        $data = DB::connection('sqlsrv_lot_trace')
+            ->table('VICT_CDT')->whereYear('ICTDATE', date('Y'))
+            ->whereMonth('ICTDATE', date('m'))
+            ->groupBy('ICT_Item')
+            ->orderBy('ICT_Item')
+            ->get([
+                'ICT_Item',
+                DB::raw("COUNT(*) TOTAL_EDITED"),
+                DB::raw("SUM(CASE WHEN CONVERT(DATE,ICT_Lupdt6) > '2024-01-01' THEN 1 ELSE 0 END) TOTAL_CHECKED"),
+                DB::raw("SUM(CASE WHEN CONVERT(DATE,ICT_Lupdt6) < '2024-01-01' THEN 1 ELSE 0 END) TOTAL_NOT_YET_CHECKED"),
+            ]);
+        $yesterDayDate = date('Y-m-d', strtotime("-1 days"));
+        $spreadSheet = new Spreadsheet();
+        $sheet = $spreadSheet->getActiveSheet();
+        $sheet->setTitle('ICT Log');
+
+        $sheet->setCellValue([1, 1], 'Period ' . date('F Y'));
+        $sheet->setCellValue([1, 2], 'Total Edit data : ' . $totalEditData);
+        $sheet->setCellValue([2, 3], 'Item Edit :');
+        $sheet->setCellValue([4, 3], 'Total Edit');
+        $sheet->setCellValue([5, 3], 'Checked');
+        $sheet->setCellValue([6, 3], 'Not Yet Checked');
+
+        $rowAt = 4;
+        foreach ($data as $r) {
+            $sheet->setCellValue([3, $rowAt], $r->ICT_Item);
+            $sheet->setCellValue([4, $rowAt], $r->TOTAL_EDITED);
+            $sheet->setCellValue([5, $rowAt], $r->TOTAL_CHECKED);
+            $sheet->setCellValue([6, $rowAt], $r->TOTAL_NOT_YET_CHECKED);
+            $rowAt++;
+        }
+
+        $rowAt++;
+        $sheet->setCellValue([1, $rowAt], 'Yesterday (' . $yesterDayDate . ')');
+        $rowAt++;
+        $sheet->setCellValue([2, $rowAt], 'Item Edit :');
+        $sheet->setCellValue([4, $rowAt], 'Total Edit');
+        $sheet->setCellValue([5, $rowAt], 'Checked');
+        $sheet->setCellValue([6, $rowAt], 'Not Yet Checked');
+        $data2 = DB::connection('sqlsrv_lot_trace')
+            ->table('VICT_CDT')->where('ICTDATE', $yesterDayDate)
+            ->groupBy('ICT_Item')
+            ->orderBy('ICT_Item')
+            ->get([
+                'ICT_Item',
+                DB::raw("COUNT(*) TOTAL_EDITED"),
+                DB::raw("SUM(CASE WHEN CONVERT(DATE,ICT_Lupdt6) > '2024-01-01' THEN 1 ELSE 0 END) TOTAL_CHECKED"),
+                DB::raw("SUM(CASE WHEN CONVERT(DATE,ICT_Lupdt6) < '2024-01-01' THEN 1 ELSE 0 END) TOTAL_NOT_YET_CHECKED"),
+            ]);
+        $rowAt++;
+        foreach ($data2 as $r) {
+            $sheet->setCellValue([3, $rowAt], $r->ICT_Item);
+            $sheet->setCellValue([4, $rowAt], $r->TOTAL_EDITED);
+            $sheet->setCellValue([5, $rowAt], $r->TOTAL_CHECKED);
+            $sheet->setCellValue([6, $rowAt], $r->TOTAL_NOT_YET_CHECKED);
+            $rowAt++;
+        }
+
+        $stringjudul = "ICT Logs Reminder, " . date('Y-m-d');
+        $writer = IOFactory::createWriter($spreadSheet, 'Xlsx');
+        $filename = $stringjudul;
+
+        if ($request->saveOutput == 1) {
+            $writer->save(env('APP_ICT_LOGGER_REPORT_FILE_PATH') . $filename . '.xlsx');
+        } else {
+            header('Content-Type: application/vnd.ms-excel');
+            header('Content-Disposition: attachment;filename="' . $filename . '.xlsx"');
+            header('Cache-Control: max-age=0');
+            header('Access-Control-Allow-Origin: *');
+            $writer->save('php://output');
+        }
+    }
 }
