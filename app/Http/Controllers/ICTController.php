@@ -26,14 +26,18 @@ class ICTController extends Controller
                 if ($request->user()->role_id == 7) {
                     $data->whereNull('ICT_LupdtApp');
                 } else {
-                    $data->whereDate('ICT_Lupdt' . $request->user()->role_id, '<', '2024-01-01');
+                    if ($request->user()->role_id < 7) {
+                        $data->whereDate('ICT_Lupdt' . $request->user()->role_id, '<', '2024-01-01');
+                    }
                 }
                 break;
             case '2':
                 if ($request->user()->role_id == 7) {
                     $data->whereNotNull('ICT_LupdtApp');
                 } else {
-                    $data->whereDate('ICT_Lupdt' . $request->user()->role_id, '>=', '2024-01-01');
+                    if ($request->user()->role_id < 7) {
+                        $data->whereDate('ICT_Lupdt' . $request->user()->role_id, '>=', '2024-01-01');
+                    }
                 }
                 break;
         }
