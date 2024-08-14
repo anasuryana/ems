@@ -49,10 +49,10 @@ class ICTController extends Controller
     {
         $whereParam = [];
         if ($request->period1) {
-            $whereParam[] = ['ICTDATE', '>=',  $request->period1];
+            $whereParam[] = ['ICTDATE', '>=', $request->period1];
         }
         if ($request->period2) {
-            $whereParam[] = ['ICTDATE', '<=',  $request->period2];
+            $whereParam[] = ['ICTDATE', '<=', $request->period2];
         }
         if ($request->ict_no) {
             $whereParam[] = ['ICT_No', 'like', '%' . $request->ict_no . '%'];
@@ -195,7 +195,7 @@ class ICTController extends Controller
             ->where('ICT_Item', $request->ICT_Item)
             ->where('ICT_BValue', $request->ICT_BValue)
             ->where('ICT_AValue', $request->ICT_AValue)
-            ->update(['ICT_Lupdt' . ($request->user()->role_id == 7 ? 'App' : $request->user()->role_id)  => date('Y-m-d H:i:s')]);
+            ->update(['ICT_Lupdt' . ($request->user()->role_id == 7 ? 'App' : $request->user()->role_id) => date('Y-m-d H:i:s')]);
         return ['message' => 'Update successfully'];
     }
 
@@ -215,7 +215,7 @@ class ICTController extends Controller
             ->where($whereParamUpdate)
             ->whereNull('ICT_LupdtApp')
             ->whereDate('ICT_Lupdt6', '>', '2024-01-01')
-            ->update(['ICT_LupdtApp'  => date('Y-m-d H:i:s')]);
+            ->update(['ICT_LupdtApp' => date('Y-m-d H:i:s')]);
         return ['message' => 'Approved successfully', $whereParamUpdate];
     }
 
@@ -231,16 +231,19 @@ class ICTController extends Controller
             ->where('ICT_Device', $request->ICT_Device)
             ->where('ICT_Item', $request->ICT_Item)
             ->where('ICT_BValue', $request->ICT_BValue)
-            ->where('ICT_AValue', $request->ICT_AValue)
-            ->first('ICT_Remark');
+            ->where('ICT_AValue', $request->ICT_AValue ?? '')
+            ->first('*');
 
         $newRemarkFix = NULL;
+        $cek = '1';
 
-        if ($currentRemark->ICT_Remark) {
+        if ($currentRemark->ICT_Remark ?? '') {
+            $cek = '2';
             $_remark = json_decode($currentRemark->ICT_Remark, true);
             $_remark[] = ['userid' => $request->user()->nick_name, 'remark' => $request->ICT_RemarkNew];
             $newRemarkFix = json_encode($_remark);
         } else {
+            $cek = '3';
             $rowRemark = [];
             $rowRemark[] = ['userid' => $request->user()->nick_name, 'remark' => $request->ICT_RemarkNew];
             $newRemarkFix = json_encode($rowRemark);
@@ -255,9 +258,9 @@ class ICTController extends Controller
             ->where('ICT_Device', $request->ICT_Device)
             ->where('ICT_Item', $request->ICT_Item)
             ->where('ICT_BValue', $request->ICT_BValue)
-            ->where('ICT_AValue', $request->ICT_AValue)
+            ->where('ICT_AValue', $request->ICT_AValue ?? '')
             ->update(['ICT_Remark' => $newRemarkFix]);
-        return ['message' => 'Update successfully', $request->all()];
+        return ['message' => 'Update successfully', $request->all(), 'cek' => $cek];
     }
 
     function reminderAsSpreadsheet(Request $request)
