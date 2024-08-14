@@ -194,7 +194,7 @@ class ICTController extends Controller
             ->where('ICT_Device', $request->ICT_Device)
             ->where('ICT_Item', $request->ICT_Item)
             ->where('ICT_BValue', $request->ICT_BValue)
-            ->where('ICT_AValue', $request->ICT_AValue)
+            ->where('ICT_AValue', $request->ICT_AValue ?? '')
             ->update(['ICT_Lupdt' . ($request->user()->role_id == 7 ? 'App' : $request->user()->role_id) => date('Y-m-d H:i:s')]);
         return ['message' => 'Update successfully'];
     }
