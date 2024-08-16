@@ -190,7 +190,7 @@ class ICTController extends Controller
             ->where('ICT_No', $request->ICT_No)
             ->where('ICT_Model', $request->ICT_Model)
             ->where('ICT_NFile', $request->ICT_NFile)
-            ->where('ICT_Step', $request->ICT_Step)
+            ->where('ICT_Step', $request->ICT_Step ?? '')
             ->where('ICT_Device', $request->ICT_Device)
             ->where('ICT_Item', $request->ICT_Item)
             ->where('ICT_BValue', $request->ICT_BValue)
