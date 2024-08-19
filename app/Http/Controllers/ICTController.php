@@ -184,19 +184,24 @@ class ICTController extends Controller
 
     function setCheck(Request $request)
     {
-        DB::connection('sqlsrv_lot_trace')->table('ICT_CDT')
+        $affectedRows = DB::connection('sqlsrv_lot_trace')->table('ICT_CDT')
             ->where('ICT_Date', $request->ICT_Date)
             ->where('ICT_Time', $request->ICT_Time)
             ->where('ICT_No', $request->ICT_No)
             ->where('ICT_Model', $request->ICT_Model)
             ->where('ICT_NFile', $request->ICT_NFile)
             ->where('ICT_Step', $request->ICT_Step ?? '')
-            ->where('ICT_Device', $request->ICT_Device)
+            ->where('ICT_Device', $request->ICT_Device ?? '')
             ->where('ICT_Item', $request->ICT_Item)
             ->where('ICT_BValue', $request->ICT_BValue)
             ->where('ICT_AValue', $request->ICT_AValue ?? '')
             ->update(['ICT_Lupdt' . ($request->user()->role_id == 7 ? 'App' : $request->user()->role_id) => date('Y-m-d H:i:s')]);
-        return ['message' => 'Update successfully'];
+        if ($affectedRows > 0) {
+            $message = 'Updated Successfully';
+        } else {
+            $message = 'Fail to update';
+        }
+        return response()->json(['message' => $message, 'data' => $affectedRows], 500);
     }
 
     function setCheckSome(Request $request)
