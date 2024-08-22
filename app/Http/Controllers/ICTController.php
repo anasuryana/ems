@@ -196,12 +196,14 @@ class ICTController extends Controller
             ->where('ICT_BValue', $request->ICT_BValue)
             ->where('ICT_AValue', $request->ICT_AValue ?? '')
             ->update(['ICT_Lupdt' . ($request->user()->role_id == 7 ? 'App' : $request->user()->role_id) => date('Y-m-d H:i:s')]);
+        $responseCode = 200;
         if ($affectedRows > 0) {
             $message = 'Updated Successfully';
         } else {
+            $responseCode = 500;
             $message = 'Fail to update';
         }
-        return response()->json(['message' => $message, 'data' => $affectedRows], 500);
+        return response()->json(['message' => $message, 'data' => $affectedRows], $responseCode);
     }
 
     function setCheckSome(Request $request)
