@@ -106,8 +106,28 @@ class ICTController extends Controller
         $data = DB::connection('sqlsrv_lot_trace')->table('VICT_CDT')
             ->where($whereParam)
             ->orderBy('ICTDATE')
-            ->orderBy('ICT_Time')
-            ->get();
+            ->orderBy('ICT_Time');
+        switch ($request->self_check) {
+            case '1':
+                if ($request->user()->role_id == 7) {
+                    $data->whereNull('ICT_LupdtApp');
+                } else {
+                    if ($request->user()->role_id < 7) {
+                        $data->whereDate('ICT_Lupdt' . $request->user()->role_id, '<', '2024-01-01');
+                    }
+                }
+                break;
+            case '2':
+                if ($request->user()->role_id == 7) {
+                    $data->whereNotNull('ICT_LupdtApp');
+                } else {
+                    if ($request->user()->role_id < 7) {
+                        $data->whereDate('ICT_Lupdt' . $request->user()->role_id, '>=', '2024-01-01');
+                    }
+                }
+                break;
+        }
+        $datas = $data->get();
         $spreadSheet = new Spreadsheet();
         $sheet = $spreadSheet->getActiveSheet();
         $sheet->setTitle('ICT Log');
@@ -136,7 +156,7 @@ class ICTController extends Controller
         $sheet->setCellValue([21, 1], 'Remark');
 
         $i = 3;
-        foreach ($data as $r) {
+        foreach ($datas as $r) {
             $sheet->setCellValue([1, $i], $r->ICTDATE);
             $sheet->setCellValue([2, $i], $r->ICT_Time);
             $sheet->setCellValue([3, $i], $r->ICT_No);
