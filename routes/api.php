@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ICTController;
+use App\Http\Controllers\ProductionController;
 use App\Http\Controllers\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -31,6 +32,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
 Route::prefix('ict')->group(function () {
     Route::get('to-spreadsheet-as-reminder', [ICTController::class, 'reminderAsSpreadsheet']);
+});
+Route::prefix('production')->group(function () {
+    Route::get('supply-status', [ProductionController::class, 'supplyStatus']);
 });
 
 Route::prefix('users')->group(function () {
