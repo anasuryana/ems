@@ -3,28 +3,66 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ProductionController extends Controller
 {
+    public function __construct()
+    {
+        date_default_timezone_set('Asia/Jakarta');
+    }
+
     function supplyStatus(Request $request)
     {
-        $data = $request->simulate == '1' ? [] : [
-            ['partCode' => 'A', 'outstandingQty' => 300],
-            ['partCode' => 'B', 'outstandingQty' => 150],
-        ];
 
-        $job = '24-' . $request->doc . '-' . $request->itemCode;
+        $year = date('y');
 
-        $status = $request->simulate == '1' ? [
-            'code' => true,
-            'message' => 'OK',
-            'job' => $job
-        ] :
+        $job = $year . '-' . $request->doc . '-' . $request->itemCode;
+
+        $JobData = DB::connection('sqlsrv_wms')->table('WMS_CLS_JOB')
+            ->where('CLS_JOBNO', $job)
+            ->groupBy('CLS_JOBNO')
+            ->first(['CLS_JOBNO', DB::raw('SUM(CLS_QTY) CLS_QTY')]);
+
+        if (empty($JobData->CLS_JOBNO)) {
+            $year++;
+            $job = $year . '-' . $request->doc . '-' . $request->itemCode;
+            $JobData = DB::connection('sqlsrv_wms')->table('WMS_CLS_JOB')
+                ->where('CLS_JOBNO', $job)
+                ->groupBy('CLS_JOBNO')
+                ->first(['CLS_JOBNO', DB::raw('SUM(CLS_QTY) CLS_QTY')]);
+
+            if (empty($JobData->CLS_JOBNO)) {
+                $year -= 2;
+                $job = $year . '-' . $request->doc . '-' . $request->itemCode;
+                $JobData = DB::connection('sqlsrv_wms')->table('WMS_CLS_JOB')
+                    ->where('CLS_JOBNO', $job)
+                    ->groupBy('CLS_JOBNO')
+                    ->first(['CLS_JOBNO', DB::raw('SUM(CLS_QTY) CLS_QTY')]);
+
+                if (empty($JobData->CLS_JOBNO)) {
+                    $status = [
+                        'code' => false,
+                        'message' => 'Supply is not enough!',
+                        'job' => $job
+                    ];
+                    return ['status' => $status, 'master' => $JobData];
+                }
+            }
+        }
+
+        $status = $JobData->CLS_QTY >= $request->qty ?
+            [
+                'code' => true,
+                'message' => 'OK',
+                'job' => $job
+            ] :
             [
                 'code' => false,
                 'message' => 'Supply is not enough',
                 'job' => $job
             ];
-        return ['status' => $status, 'data' => $data];
+
+        return ['status' => $status, 'master' => $JobData];
     }
 }
