@@ -27,6 +27,7 @@ class ProductionController extends Controller
 
         $JobData = DB::connection('sqlsrv_wms')->table('WMS_SWMP_HIS')
             ->where('SWMP_JOBNO', $job)
+            ->where('SWMP_REMARK', 'OK')
             ->groupBy('SWMP_JOBNO', 'SWMP_BOMRV')
             ->first([DB::raw('RTRIM(SWMP_JOBNO) SWMP_JOBNO'), 'SWMP_BOMRV']);
         Logger('Inisialisasi $JobData 1');
@@ -36,6 +37,7 @@ class ProductionController extends Controller
             $job = $year . '-' . $request->doc . '-' . $request->itemCode;
             $JobData = DB::connection('sqlsrv_wms')->table('WMS_SWMP_HIS')
                 ->where('SWMP_JOBNO', $job)
+                ->where('SWMP_REMARK', 'OK')
                 ->groupBy('SWMP_JOBNO', 'SWMP_BOMRV')
                 ->first([DB::raw('RTRIM(SWMP_JOBNO) SWMP_JOBNO'), 'SWMP_BOMRV']);
 
@@ -46,6 +48,7 @@ class ProductionController extends Controller
                 $job = $year . '-' . $request->doc . '-' . $request->itemCode;
                 $JobData = DB::connection('sqlsrv_wms')->table('WMS_SWMP_HIS')
                     ->where('SWMP_JOBNO', $job)
+                    ->where('SWMP_REMARK', 'OK')
                     ->groupBy('SWMP_JOBNO', 'SWMP_BOMRV')
                     ->first([DB::raw('RTRIM(SWMP_JOBNO) SWMP_JOBNO'), 'SWMP_BOMRV']);
 
@@ -87,6 +90,7 @@ class ProductionController extends Controller
         // get balance of Supplied Material
         $__suppliedMaterial = DB::connection('sqlsrv_wms')->table('WMS_SWPS_HIS')
             ->where('SWPS_JOBNO', $JobData->SWMP_JOBNO)
+            ->where('SWPS_REMARK', 'OK')
             ->groupBy('SWPS_NITMCD', 'NQTY', 'SWPS_NUNQ', 'SWPS_NLOTNO', 'SWPS_PSNNO')
             ->select(
                 DB::raw('RTRIM(SWPS_NITMCD) ITMCD'),
@@ -99,6 +103,7 @@ class ProductionController extends Controller
 
         $_suppliedMaterial = DB::connection('sqlsrv_wms')->table('WMS_SWMP_HIS')
             ->where('SWMP_JOBNO', $JobData->SWMP_JOBNO)
+            ->where('SWMP_REMARK', 'OK')
             ->groupBy('SWMP_ITMCD', 'SWMP_QTY', 'SWMP_UNQ', 'SWMP_LOTNO', 'SWMP_PSNNO')
             ->select(
                 DB::raw('RTRIM(SWMP_ITMCD) ITMCD'),
@@ -123,6 +128,7 @@ class ProductionController extends Controller
         if ($uniqueKeyList) {
             $__suppliedMaterialByUK = DB::connection('sqlsrv_wms')->table('WMS_SWPS_HIS')
                 ->whereIn('SWPS_NUNQ', $uniqueKeyList)
+                ->where('SWPS_REMARK', 'OK')
                 ->groupBy('SWPS_JOBNO')
                 ->select(
                     DB::raw('RTRIM(SWPS_JOBNO) JOBNO'),
@@ -130,6 +136,7 @@ class ProductionController extends Controller
 
             $_suppliedMaterialByUK = DB::connection('sqlsrv_wms')->table('WMS_SWMP_HIS')
                 ->whereIn('SWMP_UNQ', $uniqueKeyList)
+                ->where('SWMP_REMARK', 'OK')
                 ->groupBy('SWMP_JOBNO')
                 ->select(
                     DB::raw('RTRIM(SWMP_JOBNO) JOBNO'),
