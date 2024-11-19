@@ -25,6 +25,7 @@ class ProductionController extends Controller
 
         $isAlreadyCalculated  = false;
 
+
         $JobData = DB::connection('sqlsrv_wms')->table('WMS_SWMP_HIS')
             ->where('SWMP_JOBNO', $job)
             ->where('SWMP_REMARK', 'OK')
@@ -64,6 +65,12 @@ class ProductionController extends Controller
                 }
             }
         }
+
+        // get process context
+        $processContext = DB::connection('sqlsrv_wms')->table('XPPSN1')
+            ->where('PPSN1_WONO', $JobData->SWMP_JOBNO)
+            ->where('PPSN1_LINENO', $request->lineCode)
+            ->first([DB::raw("RTRIM(PPSN1_PROCD) PPSN1_PROCD")]);
 
         $XWO = DB::connection('sqlsrv_wms')->table('XWO')->where('PDPP_WONO', $JobData->SWMP_JOBNO)
             ->first();
@@ -150,7 +157,19 @@ class ProductionController extends Controller
             $uniqueJobList = $suppliedMaterialByUK->pluck('JOBNO')->toArray();
 
             if ($uniqueJobList) {
-                $JobOutput = DB::connection('sqlsrv_wms')->table('WMS_CLS_JOB')
+                $JobOutput = $processContext ? DB::connection('sqlsrv_wms')->table('WMS_CLS_JOB')
+                    ->leftJoin('XWO', 'CLS_JOBNO', '=', 'PDPP_WONO')
+                    ->whereIn('CLS_JOBNO', $uniqueJobList)
+                    ->where('CLS_JOBNO', $processContext->PPSN1_PROCD)
+                    ->groupBy('CLS_JOBNO', 'CLS_PROCD', 'CLS_MDLCD', 'PDPP_BOMRV')
+                    ->get([
+                        'CLS_JOBNO',
+                        DB::raw("RTRIM(CLS_PROCD) CLS_PROCD"),
+                        DB::raw("RTRIM(CLS_MDLCD) CLS_MDLCD"),
+                        DB::raw("PDPP_BOMRV CLS_BOMRV"),
+                        DB::raw("SUM(CLS_QTY) CLSQTY"),
+                        DB::raw("MAX(CLS_PSNNO) CLS_PSNNO")
+                    ]) :  DB::connection('sqlsrv_wms')->table('WMS_CLS_JOB')
                     ->leftJoin('XWO', 'CLS_JOBNO', '=', 'PDPP_WONO')
                     ->whereIn('CLS_JOBNO', $uniqueJobList)
                     ->groupBy('CLS_JOBNO', 'CLS_PROCD', 'CLS_MDLCD', 'PDPP_BOMRV')
@@ -265,10 +284,19 @@ class ProductionController extends Controller
             foreach ($requirement as $r) {
                 $_ostQty = $r->REQQT - $r->FILLQT;
                 if ($_ostQty > 0) {
-                    $finalOutstanding[] = [
-                        'partCode' => $r->MBOM_ITMCD,
-                        'outstandingQty' => $r->REQQT - $r->FILLQT,
-                    ];
+                    if ($processContext) {
+                        if ($processContext->PPSN1_PROCD == $r->MBOM_PROCD) {
+                            $finalOutstanding[] = [
+                                'partCode' => $r->MBOM_ITMCD,
+                                'outstandingQty' => $r->REQQT - $r->FILLQT,
+                            ];
+                        }
+                    } else {
+                        $finalOutstanding[] = [
+                            'partCode' => $r->MBOM_ITMCD,
+                            'outstandingQty' => $r->REQQT - $r->FILLQT,
+                        ];
+                    }
                 }
             }
         }
@@ -298,13 +326,17 @@ class ProductionController extends Controller
 
             $sheet = $spreadSheet->createSheet();
             $sheet->setTitle('JobOutput');
-            $sheet->fromArray(array_keys($_t_JobOutput[0]), null, 'A1');
-            $sheet->fromArray($_t_JobOutput, null, 'A2');
+            if ($_t_JobOutput) {
+                $sheet->fromArray(array_keys($_t_JobOutput[0]), null, 'A1');
+                $sheet->fromArray($_t_JobOutput, null, 'A2');
+            }
 
             $sheet = $spreadSheet->createSheet();
             $sheet->setTitle('anotherRequirement');
-            $sheet->fromArray(array_keys($_t_anotherRequirement[0]), null, 'A1');
-            $sheet->fromArray($_t_anotherRequirement, null, 'A2');
+            if ($_t_anotherRequirement) {
+                $sheet->fromArray(array_keys($_t_anotherRequirement[0]), null, 'A1');
+                $sheet->fromArray($_t_anotherRequirement, null, 'A2');
+            }
 
             $stringjudul = "Supply Status  $JobData->SWMP_JOBNO " . date('Y-m-d');
             $writer = IOFactory::createWriter($spreadSheet, 'Xlsx');
