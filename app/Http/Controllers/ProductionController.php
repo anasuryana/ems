@@ -57,7 +57,7 @@ class ProductionController extends Controller
                         'message' => 'Job Number is not found',
                         'job' => $job
                     ];
-                    return ['status' => $status, 'master' => $JobData];
+                    return ['status' => $status, 'master' => $JobData, 'data' => []];
                 }
             }
         }
