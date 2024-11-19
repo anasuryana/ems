@@ -160,7 +160,7 @@ class ProductionController extends Controller
                 $JobOutput = $processContext ? DB::connection('sqlsrv_wms')->table('WMS_CLS_JOB')
                     ->leftJoin('XWO', 'CLS_JOBNO', '=', 'PDPP_WONO')
                     ->whereIn('CLS_JOBNO', $uniqueJobList)
-                    ->where('CLS_JOBNO', $processContext->PPSN1_PROCD)
+                    ->where('CLS_PROCD', $processContext->PPSN1_PROCD)
                     ->groupBy('CLS_JOBNO', 'CLS_PROCD', 'CLS_MDLCD', 'PDPP_BOMRV')
                     ->get([
                         'CLS_JOBNO',
