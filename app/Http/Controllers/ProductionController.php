@@ -311,24 +311,38 @@ class ProductionController extends Controller
             $_t_JobOutput = json_decode(json_encode($JobOutput), true);
             $_t_anotherRequirement = json_decode(json_encode($anotherRequirement), true);
 
+            $stringValueBinder = new \PhpOffice\PhpSpreadsheet\Cell\StringValueBinder();
+            $stringValueBinder->setNumericConversion(false);
+            \PhpOffice\PhpSpreadsheet\Cell\Cell::setValueBinder($stringValueBinder);
+
             $spreadSheet = new Spreadsheet();
+
             $sheet = $spreadSheet->getActiveSheet();
             $sheet->setTitle('requirement');
 
             $sheet->fromArray(array_keys($_t_requirement[0]), null, 'A1');
             $sheet->fromArray($_t_requirement, null, 'A2');
+            foreach (range('A', 'T') as $v) {
+                $sheet->getColumnDimension($v)->setAutoSize(true);
+            }
 
 
             $sheet = $spreadSheet->createSheet();
             $sheet->setTitle('supplied');
             $sheet->fromArray(array_keys($_t_suppliedMaterial[0]), null, 'A1');
             $sheet->fromArray($_t_suppliedMaterial, null, 'A2');
+            foreach (range('A', 'T') as $v) {
+                $sheet->getColumnDimension($v)->setAutoSize(true);
+            }
 
             $sheet = $spreadSheet->createSheet();
             $sheet->setTitle('JobOutput');
             if ($_t_JobOutput) {
                 $sheet->fromArray(array_keys($_t_JobOutput[0]), null, 'A1');
                 $sheet->fromArray($_t_JobOutput, null, 'A2');
+                foreach (range('A', 'T') as $v) {
+                    $sheet->getColumnDimension($v)->setAutoSize(true);
+                }
             }
 
             $sheet = $spreadSheet->createSheet();
@@ -336,6 +350,9 @@ class ProductionController extends Controller
             if ($_t_anotherRequirement) {
                 $sheet->fromArray(array_keys($_t_anotherRequirement[0]), null, 'A1');
                 $sheet->fromArray($_t_anotherRequirement, null, 'A2');
+                foreach (range('A', 'T') as $v) {
+                    $sheet->getColumnDimension($v)->setAutoSize(true);
+                }
             }
 
             $stringjudul = "Supply Status  $JobData->SWMP_JOBNO " . date('Y-m-d');
