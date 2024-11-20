@@ -253,13 +253,9 @@ class ProductionController extends Controller
                 }
             }
         } else {
-            foreach ($suppliedMaterial as &$s) {
-                foreach ($requirement as &$a) {
-                    if ($s->ITMCD == $a->MBOM_ITMCD) {
-                        if ($s->QTY == 0) {
-                            break;
-                        }
-
+            foreach ($requirement as &$a) {
+                foreach ($suppliedMaterial as &$s) {
+                    if ($s->ITMCD == $a->MBOM_ITMCD && $s->QTY > 0) {
                         if ($a->REQQT == $a->FILLQT) {
                             break;
                         }
@@ -274,9 +270,9 @@ class ProductionController extends Controller
                         }
                     }
                 }
-                unset($a);
+                unset($s);
             }
-            unset($s);
+            unset($a);
 
             foreach ($requirement as $r) {
                 $_ostQty = $r->REQQT - $r->FILLQT;
