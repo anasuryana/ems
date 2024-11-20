@@ -212,12 +212,9 @@ class ProductionController extends Controller
 
                 // // // deduct supplied material
                 Logger('Plot Suplai terhadap Kebutuhan');
-                foreach ($suppliedMaterial as &$s) {
-                    foreach ($anotherRequirement as &$a) {
-                        if ($s->ITMCD == $a->MBOM_ITMCD && $s->PSNNO == $a->PSNNO) {
-                            if ($s->QTY == 0) {
-                                break;
-                            }
+                foreach ($anotherRequirement as &$a) {
+                    foreach ($suppliedMaterial as &$s) {
+                        if ($s->ITMCD == $a->MBOM_ITMCD && $s->PSNNO == $a->PSNNO && $s->QTY > 0) {
 
                             if ($a->REQQT == $a->FILLQT) {
                                 break;
@@ -233,9 +230,9 @@ class ProductionController extends Controller
                             }
                         }
                     }
-                    unset($a);
+                    unset($s);
                 }
-                unset($s);
+                unset($a);
             }
         }
 
