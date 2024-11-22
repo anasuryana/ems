@@ -25,7 +25,6 @@ class ProductionController extends Controller
 
         $isAlreadyCalculated  = false;
 
-
         $JobData = DB::connection('sqlsrv_wms')->table('WMS_SWMP_HIS')
             ->where('SWMP_JOBNO', $job)
             ->where('SWMP_REMARK', 'OK')
@@ -71,6 +70,13 @@ class ProductionController extends Controller
             ->where('PPSN1_WONO', $JobData->SWMP_JOBNO)
             ->where('PPSN1_LINENO', $request->lineCode)
             ->first([DB::raw("RTRIM(PPSN1_PROCD) PPSN1_PROCD")]);
+        $psnContext = DB::connection('sqlsrv_wms')->table('XPPSN1')
+            ->where('PPSN1_WONO', $JobData->SWMP_JOBNO)
+            ->groupBy('PPSN1_PSNNO')
+            ->get([DB::raw("RTRIM(PPSN1_PSNNO) PPSN1_PSNNO")])
+            ->pluck('PPSN1_PSNNO')->toArray();
+
+
 
         $XWO = DB::connection('sqlsrv_wms')->table('XWO')->where('PDPP_WONO', $JobData->SWMP_JOBNO)
             ->first();
@@ -96,7 +102,7 @@ class ProductionController extends Controller
 
         // get balance of Supplied Material
         $__suppliedMaterial = DB::connection('sqlsrv_wms')->table('WMS_SWPS_HIS')
-            ->where('SWPS_JOBNO', $JobData->SWMP_JOBNO)
+            ->whereIn('SWPS_PSNNO', $psnContext)
             ->where('SWPS_REMARK', 'OK')
             ->groupBy('SWPS_NITMCD', 'NQTY', 'SWPS_NUNQ', 'SWPS_NLOTNO', 'SWPS_PSNNO')
             ->select(
@@ -109,7 +115,7 @@ class ProductionController extends Controller
             );
 
         $_suppliedMaterial = DB::connection('sqlsrv_wms')->table('WMS_SWMP_HIS')
-            ->where('SWMP_JOBNO', $JobData->SWMP_JOBNO)
+            ->whereIn('SWMP_PSNNO', $psnContext)
             ->where('SWMP_REMARK', 'OK')
             ->groupBy('SWMP_ITMCD', 'SWMP_QTY', 'SWMP_UNQ', 'SWMP_LOTNO', 'SWMP_PSNNO')
             ->select(
