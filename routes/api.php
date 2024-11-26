@@ -27,6 +27,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('check', [ICTController::class, 'setCheck']);
         Route::put('check-some', [ICTController::class, 'setCheckSome']);
         Route::put('remark', [ICTController::class, 'setRemark']);
+        Route::get('trace-paginate', [ICTController::class, 'trace']);
+        Route::get('trace-to-spreadsheet', [ICTController::class, 'traceToSpreadsheet']);
     });
 });
 
