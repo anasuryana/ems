@@ -371,8 +371,8 @@ class ICTController extends Controller
     function trace(Request $request)
     {
         $data =  DB::connection('sqlsrv_lot_trace')
-            ->table('W_ICT_Test_Table')->where('Test_Time', '>=', $request->period1)
-            ->where('Test_Time', '<=', $request->period2)
+            ->table('W_ICT_Test_Table')->whereDate('Test_Time', '>=', $request->period1)
+            ->whereDate('Test_Time', '<=', $request->period2)
             ->where('Production_Control_No', 'like', '%' . $request->production_control . '%')
             ->where('AssyNo', 'like', '%' . $request->assy_no . '%')
             ->where('BoardNo', 'like', '%' . $request->type . '%')
@@ -386,8 +386,8 @@ class ICTController extends Controller
     function traceToSpreadsheet(Request $request)
     {
         $data =  DB::connection('sqlsrv_lot_trace')
-            ->table('W_ICT_Test_Table')->where('Test_Time', '>=', $request->period1)
-            ->where('Test_Time', '<=', $request->period2)
+            ->table('W_ICT_Test_Table')->whereDate('Test_Time', '>=', $request->period1)
+            ->whereDate('Test_Time', '<=', $request->period2)
             ->where('Production_Control_No', 'like', '%' . $request->production_control . '%')
             ->where('AssyNo', 'like', '%' . $request->assy_no . '%')
             ->where('BoardNo', 'like', '%' . $request->type . '%')
