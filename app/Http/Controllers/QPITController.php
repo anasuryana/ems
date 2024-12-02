@@ -66,10 +66,11 @@ class QPITController extends Controller
         $sheet->setCellValue([1, 2], 'Time');
         $sheet->setCellValue([2, 2], 'Process');
         $sheet->setCellValue([3, 2], 'Result');
-        $sheet->setCellValue([8, 2], 'Class');
-        $sheet->setCellValue([9, 2], 'Address');
-        $sheet->setCellValue([10, 2], 'Details');
-        $sheet->setCellValue([11, 2], 'Pin');
+        $sheet->setCellValue([8, 2], 'Code');
+        $sheet->setCellValue([9, 2], 'Class');
+        $sheet->setCellValue([10, 2], 'Address');
+        $sheet->setCellValue([11, 2], 'Details');
+        $sheet->setCellValue([12, 2], 'Pin');
 
         $i = 3;
         foreach ($datas as $r) {
@@ -80,21 +81,22 @@ class QPITController extends Controller
             $sheet->setCellValue([5, $i], $r->AssyNo);
             $sheet->setCellValue([6, $i], $r->BoardNo);
             $sheet->setCellValue([7, $i], $r->PdtNo);
-            $sheet->setCellValue([8, $i], $r->Error_Class);
-            $sheet->setCellValue([9, $i], $r->Error_Address);
-            $sheet->setCellValue([10, $i], $r->Error_Details);
-            $sheet->setCellValue([11, $i], $r->Error_Pin_No);
-            $sheet->setCellValue([12, $i], $r->Line_Name);
-            $sheet->setCellValue([13, $i], $r->Shift_Name);
-            $sheet->setCellValue([14, $i], $r->PC_No);
-            $sheet->setCellValue([15, $i], $r->Jig_No);
-            $sheet->setCellValue([16, $i], $r->Power_Box_No);
-            $sheet->setCellValue([17, $i], $r->Target_Program_Ver);
-            $sheet->setCellValue([18, $i], $r->Test_Program_Ver);
-            $sheet->setCellValue([19, $i], $r->Detailed_Setting);
-            $sheet->setCellValue([20, $i], $r->Function_Test_Sum);
-            $sheet->setCellValue([21, $i], $r->Operator_Name);
-            $sheet->setCellValue([22, $i], $r->Password_Ver);
+            $sheet->setCellValue([8, $i], $r->Error_Code);
+            $sheet->setCellValue([9, $i], $r->Error_Class);
+            $sheet->setCellValue([10, $i], $r->Error_Address);
+            $sheet->setCellValue([11, $i], $r->Error_Details);
+            $sheet->setCellValue([12, $i], $r->Error_Pin_No);
+            $sheet->setCellValue([13, $i], $r->Line_Name);
+            $sheet->setCellValue([14, $i], $r->Shift_Name);
+            $sheet->setCellValue([15, $i], $r->PC_No);
+            $sheet->setCellValue([16, $i], $r->Jig_No);
+            $sheet->setCellValue([17, $i], $r->Power_Box_No);
+            $sheet->setCellValue([18, $i], $r->Target_Program_Ver);
+            $sheet->setCellValue([19, $i], $r->Test_Program_Ver);
+            $sheet->setCellValue([20, $i], $r->Detailed_Setting);
+            $sheet->setCellValue([21, $i], $r->Function_Test_Sum);
+            $sheet->setCellValue([22, $i], $r->Operator_Name);
+            $sheet->setCellValue([23, $i], $r->Password_Ver);
             $i++;
         }
 
