@@ -399,12 +399,16 @@ class ICTController extends Controller
         $spreadSheet = new Spreadsheet();
         $sheet = $spreadSheet->getActiveSheet();
         $sheet->setTitle('ICT Log');
-        $sheet->setCellValue([1, 1], 'Test');
-        $sheet->setCellValue([4, 1], 'Production Control No');
-        $sheet->setCellValue([5, 1], 'Assy No');
-        $sheet->setCellValue([6, 1], 'Type');
-        $sheet->setCellValue([7, 1], 'Model');
-        $sheet->setCellValue([8, 1], 'Error');
+        $sheet->setCellValue([1, 1], 'Test Time');
+        $sheet->setCellValue([2, 1], 'Test Process');
+        $sheet->setCellValue([3, 1], 'Production Control No');
+        $sheet->setCellValue([4, 1], 'Assy No');
+        $sheet->setCellValue([5, 1], 'Type');
+        $sheet->setCellValue([6, 1], 'Model');
+        $sheet->setCellValue([7, 1], 'Test Result');
+        $sheet->setCellValue([8, 1], 'Error Class');
+        $sheet->setCellValue([9, 1], 'Error Address');
+        $sheet->setCellValue([10, 1], 'Error Details');
         $sheet->setCellValue([11, 1], 'Notes');
         $sheet->setCellValue([12, 1], 'Line');
         $sheet->setCellValue([13, 1], 'Shift');
@@ -412,22 +416,15 @@ class ICTController extends Controller
         $sheet->setCellValue([15, 1], 'JIG No');
         $sheet->setCellValue([16, 1], 'Operator');
 
-        $sheet->setCellValue([1, 2], 'Time');
-        $sheet->setCellValue([2, 2], 'Process');
-        $sheet->setCellValue([3, 2], 'Result');
-        $sheet->setCellValue([8, 2], 'Class');
-        $sheet->setCellValue([9, 2], 'Address');
-        $sheet->setCellValue([10, 2], 'Details');
-
         $i = 3;
         foreach ($datas as $r) {
             $sheet->setCellValue([1, $i], $r->Test_Time);
             $sheet->setCellValue([2, $i], $r->Test_Process);
-            $sheet->setCellValue([3, $i], $r->Test_Result);
-            $sheet->setCellValue([4, $i], $r->Production_Control_No);
-            $sheet->setCellValue([5, $i], $r->AssyNo);
-            $sheet->setCellValue([6, $i], $r->BoardNo);
-            $sheet->setCellValue([7, $i], $r->PdtNo);
+            $sheet->setCellValue([3, $i], $r->Production_Control_No);
+            $sheet->setCellValue([4, $i], $r->AssyNo);
+            $sheet->setCellValue([5, $i], $r->BoardNo);
+            $sheet->setCellValue([6, $i], $r->PdtNo);
+            $sheet->setCellValue([7, $i], $r->Test_Result);
             $sheet->setCellValue([8, $i], $r->Error_Class);
             $sheet->setCellValue([9, $i], $r->Error_Address);
             $sheet->setCellValue([10, $i], $r->Error_Details);
