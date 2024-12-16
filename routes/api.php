@@ -43,6 +43,7 @@ Route::prefix('ict')->group(function () {
 });
 Route::prefix('production')->group(function () {
     Route::get('supply-status', [ProductionController::class, 'supplyStatus']);
+    Route::get('active', [ProductionController::class, 'getActiveJob']);
 });
 
 Route::prefix('password')->group(function () {

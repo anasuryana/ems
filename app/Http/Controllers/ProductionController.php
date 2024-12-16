@@ -369,4 +369,32 @@ class ProductionController extends Controller
             ];
         }
     }
+
+    function getActiveJob(Request $request)
+    {
+        $data = DB::connection('sqlsrv_wms')->table('WMS_TLWS_TBL')
+            ->where('TLWS_STSFG', 'ACT')
+            ->where('TLWS_WONO', $request->workorder)
+            ->first(
+                [
+                    DB::raw('RTRIM(TLWS_JOBNO) TLWS_JOBNO'),
+                    'TLWS_PROCD',
+                    'TLWS_LINENO'
+                ]
+            );
+
+        if (!$data) {
+            return ['code' => false, 'message' => 'There is no active job'];
+        }
+
+        return [
+            'code' => true,
+            'message' => 'Go ahead',
+            'data' => [
+                'job' => $data->TLWS_JOBNO,
+                'processCode' => $data->TLWS_PROCD,
+                'lineCode' => $data->TLWS_LINENO
+            ]
+        ];
+    }
 }
