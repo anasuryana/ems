@@ -44,10 +44,11 @@ Route::prefix('ict')->group(function () {
 Route::prefix('production')->group(function () {
     Route::get('supply-status', [ProductionController::class, 'supplyStatus']);
     Route::get('active', [ProductionController::class, 'getActiveJob']);
+    Route::post('output', [ProductionController::class, 'saveSensorOutput']);
 });
 
 Route::prefix('password')->group(function () {
-    Route::get('generate', function() {
+    Route::get('generate', function () {
         return Hash::make('S!Paling131');
     });
 });

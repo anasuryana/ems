@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Log\Logger;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 
@@ -396,5 +397,36 @@ class ProductionController extends Controller
                 'lineCode' => $data->TLWS_LINENO
             ]
         ];
+    }
+
+    function saveSensorOutput(Request $request)
+    {
+
+        $validator = Validator::make($request->all(), [
+            'doc' => 'required',
+            'line' => 'required',
+            'processCode' => 'required',
+        ], [
+            'doc.required' => ':attribute is required',
+            'line.required' => ':attribute is required',
+            'processCode.required' => ':attribute is required',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 406);
+        }
+
+        $affectedRows = DB::connection('sqlsrv_wms')->table('keikaku_outputs')->insert([
+            'created_at' => date('Y-m-d H:i:s'),
+            'production_date' => date('Y-m-d'),
+            'running_at' => date('Y-m-d H:i:s'),
+            'wo_code' => $request->doc,
+            'line_code' => $request->line,
+            'process_code' => $request->processCode,
+            'ok_qty' => 1,
+            'created_by' => 'sensor',
+        ]);
+
+        return $affectedRows ? ['message' => 'Recorded successfully'] : ['message' => 'Failed, please try again'];
     }
 }
