@@ -401,26 +401,49 @@ class ProductionController extends Controller
     {
 
         $validator = Validator::make($request->all(), [
-            'doc' => 'required',
-            'line' => 'required',
-            'processCode' => 'required',
+            'line' => 'required'
         ], [
-            'doc.required' => ':attribute is required',
             'line.required' => ':attribute is required',
-            'processCode.required' => ':attribute is required',
         ]);
 
         if ($validator->fails()) {
             return response()->json($validator->errors(), 406);
         }
 
+        $data = DB::connection('sqlsrv_wms')->table('WMS_TLWS_TBL')
+            ->where('TLWS_STSFG', 'ACT')
+            ->where('TLWS_LINENO', $request->line)
+            ->first(
+                [
+                    DB::raw('RTRIM(TLWS_JOBNO) TLWS_JOBNO'),
+                    'TLWS_PROCD',
+                    'TLWS_LINENO'
+                ]
+            );
+
+        if (!$data) {
+            $data = DB::connection('sqlsrv_wms')->table('WMS_TLWS_TBL')
+                ->where('TLWS_STSFG', 'ACT')
+                ->where('TLWS_LINENO', 'SMT-' . $request->line)
+                ->first(
+                    [
+                        DB::raw('RTRIM(TLWS_JOBNO) TLWS_JOBNO'),
+                        'TLWS_PROCD',
+                        'TLWS_LINENO'
+                    ]
+                );
+            if (!$data) {
+                return ['code' => false, 'message' => 'There is no active job'];
+            }
+        }
+
         $affectedRows = DB::connection('sqlsrv_wms')->table('keikaku_outputs')->insert([
             'created_at' => date('Y-m-d H:i:s'),
             'production_date' => date('Y-m-d'),
             'running_at' => date('Y-m-d H:i:s'),
-            'wo_code' => $request->doc,
-            'line_code' => $request->line,
-            'process_code' => $request->processCode,
+            'wo_code' => $data->TLWS_JOBNO,
+            'line_code' => str_replace('SMT-', '', $data->TLWS_LINENO),
+            'process_code' => $data->TLWS_PROCD,
             'ok_qty' => 1,
             'created_by' => 'sensor',
         ]);
