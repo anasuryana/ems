@@ -169,6 +169,7 @@ class ProductionController extends Controller
                     ->whereIn('CLS_JOBNO', $uniqueJobList)
                     ->where('CLS_PROCD', $processContext->PPSN1_PROCD)
                     ->groupBy('CLS_JOBNO', 'CLS_PROCD', 'CLS_MDLCD', 'PDPP_BOMRV')
+                    ->orderBy(DB::raw('MIN(CLS_LUPDT)'))
                     ->get([
                         'CLS_JOBNO',
                         DB::raw("RTRIM(CLS_PROCD) CLS_PROCD"),
@@ -180,6 +181,7 @@ class ProductionController extends Controller
                     ->leftJoin('XWO', 'CLS_JOBNO', '=', 'PDPP_WONO')
                     ->whereIn('CLS_JOBNO', $uniqueJobList)
                     ->groupBy('CLS_JOBNO', 'CLS_PROCD', 'CLS_MDLCD', 'PDPP_BOMRV')
+                    ->orderBy(DB::raw('MIN(CLS_LUPDT)'))
                     ->get([
                         'CLS_JOBNO',
                         DB::raw("RTRIM(CLS_PROCD) CLS_PROCD"),
@@ -246,17 +248,13 @@ class ProductionController extends Controller
         $finalOutstanding = [];
 
         if ($isAlreadyCalculated) {
-            if ($anotherRequirement->contains('FLAGJOBNO', $JobData->SWMP_JOBNO)) {
-                $_finaloutstanding = $anotherRequirement->where('FLAGJOBNO', $JobData->SWMP_JOBNO)->values();
-
-                foreach ($_finaloutstanding as $r) {
-                    $_ostQty = $r->REQQT - $r->FILLQT;
-                    if ($_ostQty > 0) {
-                        $finalOutstanding[] = [
-                            'partCode' => $r->MBOM_ITMCD,
-                            'outstandingQty' => $r->REQQT - $r->FILLQT,
-                        ];
-                    }
+            foreach ($anotherRequirement as $r) {
+                $_ostQty = $r->REQQT - $r->FILLQT;
+                if ($_ostQty > 0) {
+                    $finalOutstanding[] = [
+                        'partCode' => $r->MBOM_ITMCD,
+                        'outstandingQty' => $r->REQQT - $r->FILLQT,
+                    ];
                 }
             }
         } else {
