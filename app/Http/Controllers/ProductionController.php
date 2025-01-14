@@ -71,6 +71,12 @@ class ProductionController extends Controller
             ->where('PPSN1_WONO', $JobData->SWMP_JOBNO)
             ->where('PPSN1_LINENO', $request->lineCode)
             ->first([DB::raw("RTRIM(PPSN1_PROCD) PPSN1_PROCD")]);
+        if (!$processContext) {
+            $processContext = DB::connection('sqlsrv_wms')->table('XPPSN1')
+                ->where('PPSN1_WONO', $JobData->SWMP_JOBNO)
+                ->where('PPSN1_LINENO', 'like', '%' . substr($request->lineCode, -1) . '%')
+                ->first([DB::raw("RTRIM(PPSN1_PROCD) PPSN1_PROCD")]);
+        }
         $psnContext = DB::connection('sqlsrv_wms')->table('XPPSN1')
             ->where('PPSN1_WONO', $JobData->SWMP_JOBNO)
             ->groupBy('PPSN1_PSNNO')
@@ -246,7 +252,7 @@ class ProductionController extends Controller
         }
 
         $finalOutstanding = [];
-
+        $isAlreadyCalculated = false;
         if ($isAlreadyCalculated) {
             foreach ($anotherRequirement as $r) {
                 $_ostQty = $r->REQQT - $r->FILLQT;
@@ -342,6 +348,64 @@ class ProductionController extends Controller
                             'partCode' => $r->MBOM_ITMCD,
                             'outstandingQty' => $r->REQQT - $r->FILLQT,
                         ];
+                    }
+                }
+            } else {
+                $__isfound = false;
+                foreach ($finalOutstanding as $r) {
+                    $ENGBOM = DB::connection('sqlsrv_wms')->table('ENG_BOMSTX')
+                        ->select('MAIN_PART_CODE', 'EPSON_ORG_PART', 'SUB', 'SUB1')
+                        ->where('MODEL_CODE', $request->itemCode)
+                        ->where('MAIN_PART_CODE', $r['partCode'])
+                        ->first();
+                    if ($ENGBOM) {
+                        foreach ($requirement as &$a) {
+                            if ($a->MBOM_ITMCD == $ENGBOM->MAIN_PART_CODE) {
+                                foreach ($suppliedMaterial as &$s) {
+                                    // die('sini oy1');
+
+                                    if ($s->ITMCD == $ENGBOM->SUB && $s->QTY > 0) {
+                                        $__isfound = true;
+                                        if ($a->REQQT == $a->FILLQT) {
+                                            break;
+                                        }
+
+                                        $_req = $a->REQQT - $a->FILLQT;
+                                        if ($s->QTY >= $_req) {
+                                            $a->FILLQT += $_req;
+                                            $s->QTY -= $_req;
+                                        } else {
+                                            $a->FILLQT += $s->QTY;
+                                            $s->QTY = 0;
+                                        }
+                                    }
+                                }
+                                unset($s);
+                            }
+                        }
+                        unset($a);
+                    }
+                }
+
+                if ($__isfound) {
+                    $finalOutstanding = [];
+                    foreach ($requirement as $r) {
+                        $_ostQty = $r->REQQT - $r->FILLQT;
+                        if ($_ostQty > 0) {
+                            if ($processContext) {
+                                if ($processContext->PPSN1_PROCD == $r->MBOM_PROCD) {
+                                    $finalOutstanding[] = [
+                                        'partCode' => $r->MBOM_ITMCD,
+                                        'outstandingQty' => $r->REQQT - $r->FILLQT,
+                                    ];
+                                }
+                            } else {
+                                $finalOutstanding[] = [
+                                    'partCode' => $r->MBOM_ITMCD,
+                                    'outstandingQty' => $r->REQQT - $r->FILLQT,
+                                ];
+                            }
+                        }
                     }
                 }
             }
