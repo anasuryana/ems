@@ -252,7 +252,6 @@ class ProductionController extends Controller
         }
 
         $finalOutstanding = [];
-        $isAlreadyCalculated = false;
         if ($isAlreadyCalculated) {
             foreach ($anotherRequirement as $r) {
                 $_ostQty = $r->REQQT - $r->FILLQT;
