@@ -299,9 +299,58 @@ class ProductionController extends Controller
             }
         }
 
+        if ($finalOutstanding) {
+            // find alternative part
+            if ($isAlreadyCalculated) {
+                foreach ($finalOutstanding as $r) {
+                    $ENGBOM = DB::connection('sqlsrv_wms')->table('ENG_BOMSTX')
+                        ->select('MAIN_PART_CODE', 'EPSON_ORG_PART', 'SUB', 'SUB1')
+                        ->where('MODEL_CODE', $request->itemCode)
+                        ->where('MAIN_PART_CODE', $r['partCode'])
+                        ->get();
+                    foreach ($anotherRequirement as &$a) {
+                        foreach ($ENGBOM as $alt) {
 
-        $status = $finalOutstanding ? ['code' => false, 'message' => 'Supply is not enough', 'job' => $JobData->SWMP_JOBNO] :
-            ['code' => true, 'message' => 'OK', 'job' => $JobData->SWMP_JOBNO];
+                            if ($a->MBOM_ITMCD == $alt->MAIN_PART_CODE) {
+                                foreach ($suppliedMaterial as &$s) {
+                                    if ($s->ITMCD == $alt->SUB && $s->PSNNO == $a->PSNNO && $s->QTY > 0) {
+                                        if ($a->REQQT == $a->FILLQT) {
+                                            break;
+                                        }
+
+                                        $_req = $a->REQQT - $a->FILLQT;
+                                        if ($s->QTY >= $_req) {
+                                            $a->FILLQT += $_req;
+                                            $s->QTY -= $_req;
+                                        } else {
+                                            $a->FILLQT += $s->QTY;
+                                            $s->QTY = 0;
+                                        }
+                                    }
+                                }
+                                unset($s);
+                            }
+                        }
+                    }
+                    unset($a);
+                }
+                $finalOutstanding = [];
+                foreach ($anotherRequirement as $r) {
+                    $_ostQty = $r->REQQT - $r->FILLQT;
+                    if ($_ostQty > 0) {
+                        $finalOutstanding[] = [
+                            'partCode' => $r->MBOM_ITMCD,
+                            'outstandingQty' => $r->REQQT - $r->FILLQT,
+                        ];
+                    }
+                }
+            }
+
+            $status = $finalOutstanding ? ['code' => false, 'message' => 'Supply is not enough', 'job' => $JobData->SWMP_JOBNO, 'flag' => $isAlreadyCalculated] :
+                ['code' => true, 'message' => 'OK', 'job' => $JobData->SWMP_JOBNO];
+        } else {
+            $status = ['code' => true, 'message' => 'OK', 'job' => $JobData->SWMP_JOBNO];
+        }
 
         if ($request->outputType == 'spreadsheet') {
             $_t_requirement = json_decode(json_encode($requirement), true);
