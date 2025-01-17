@@ -3,6 +3,7 @@
 use App\Http\Controllers\ICTController;
 use App\Http\Controllers\ProductionController;
 use App\Http\Controllers\QPITController;
+use App\Http\Controllers\RepairDataController;
 use App\Http\Controllers\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -35,6 +36,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('qpit')->group(function () {
         Route::get('trace-paginate', [QPITController::class, 'trace']);
         Route::get('trace-to-spreadsheet', [QPITController::class, 'traceToSpreadsheet']);
+    });
+    Route::prefix('repair')->group(function () {
+        Route::get('trace-paginate', [RepairDataController::class, 'trace']);
+        Route::get('trace-to-spreadsheet', [RepairDataController::class, 'traceToSpreadsheet']);
     });
 });
 
