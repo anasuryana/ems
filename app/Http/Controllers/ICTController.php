@@ -416,7 +416,7 @@ class ICTController extends Controller
         $sheet->setCellValue([15, 1], 'JIG No');
         $sheet->setCellValue([16, 1], 'Operator');
 
-        $i = 3;
+        $i = 2;
         foreach ($datas as $r) {
             $sheet->setCellValue([1, $i], $r->Test_Time);
             $sheet->setCellValue([2, $i], $r->Test_Process);
@@ -441,15 +441,22 @@ class ICTController extends Controller
             $sheet->getColumnDimension($v)->setAutoSize(true);
         }
 
-        $sheet->freezePane('A3');
+        $sheet->freezePane('A2');
 
         $stringjudul = "ICT Logs, " . date('H:i:s');
-        $writer = IOFactory::createWriter($spreadSheet, 'Xlsx');
         $filename = $stringjudul;
-        header('Content-Type: application/vnd.ms-excel');
-        header('Content-Disposition: attachment;filename="' . $filename . '.xlsx"');
         header('Cache-Control: max-age=0');
         header('Access-Control-Allow-Origin: *');
+        if ($request->file_type == 'xlsx') {
+            $writer = IOFactory::createWriter($spreadSheet, 'Xlsx');
+            header('Content-Type: application/vnd.ms-excel');
+            header('Content-Disposition: attachment;filename="' . $filename . '.xlsx"');
+        } else {
+            $writer = IOFactory::createWriter($spreadSheet, 'Csv');
+            header('Content-Type: text/csv');
+            header('Content-Disposition: attachment;filename="' . $filename . '.csv"');
+        }
+
         $writer->save('php://output');
     }
 }

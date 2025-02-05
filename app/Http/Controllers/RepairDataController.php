@@ -58,7 +58,7 @@ class RepairDataController extends Controller
         $sheet->setCellValue([17, 1], 'WEEK');
         $sheet->setCellValue([18, 1], 'Category');
 
-        $i = 3;
+        $i = 2;
         foreach ($datas as $r) {
             $sheet->setCellValue([1, $i], $r->Repair_date);
             $sheet->setCellValue([2, $i], $r->Repair_line);
@@ -85,15 +85,20 @@ class RepairDataController extends Controller
             $sheet->getColumnDimension($v)->setAutoSize(true);
         }
 
-        $sheet->freezePane('A3');
-
+        $sheet->freezePane('A2');
         $stringjudul = "Repair Data Logs, " . date('H:i:s');
-        $writer = IOFactory::createWriter($spreadSheet, 'Xlsx');
         $filename = $stringjudul;
-        header('Content-Type: application/vnd.ms-excel');
-        header('Content-Disposition: attachment;filename="' . $filename . '.xlsx"');
         header('Cache-Control: max-age=0');
         header('Access-Control-Allow-Origin: *');
+        if ($request->file_type == 'xlsx') {
+            header('Content-Type: application/vnd.ms-excel');
+            header('Content-Disposition: attachment;filename="' . $filename . '.xlsx"');
+            $writer = IOFactory::createWriter($spreadSheet, 'Xlsx');
+        } else {
+            $writer = IOFactory::createWriter($spreadSheet, 'Csv');
+            header('Content-Type: text/csv');
+            header('Content-Disposition: attachment;filename="' . $filename . '.csv"');
+        }
         $writer->save('php://output');
     }
 }
