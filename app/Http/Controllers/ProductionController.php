@@ -21,8 +21,8 @@ class ProductionController extends Controller
     {
         Logger('Mulai kalkulasi');
         $year = date('y');
-
-        $job = $year . '-' . $request->doc . '-' . $request->itemCode;
+        $jobWithoutYear = $request->doc . '-' . $request->itemCode;
+        $job = $year . '-' . $jobWithoutYear;
 
         $isAlreadyCalculated  = false;
 
@@ -304,6 +304,8 @@ class ProductionController extends Controller
             }
         }
 
+        $isJobContextCalculationOK = true;
+
         if ($finalOutstanding) {
             // find alternative part
             if ($isAlreadyCalculated) {
@@ -409,8 +411,22 @@ class ProductionController extends Controller
                 }
             }
 
-            $status = $finalOutstanding ? ['code' => false, 'message' => 'Supply is not enough', 'job' => $JobData->SWMP_JOBNO, 'flag' => $isAlreadyCalculated] :
-                ['code' => true, 'message' => 'OK', 'job' => $JobData->SWMP_JOBNO];
+
+            if ($finalOutstanding) {
+                foreach ($anotherRequirement as $r) {
+                    if ($r->REQQT - $r->FILLQT > 0 && str_contains($r->FLAGJOBNO, $jobWithoutYear)) {
+                        $isJobContextCalculationOK = false;
+                        break;
+                    }
+                }
+                if ($isJobContextCalculationOK) {
+                    $status = ['code' => false, 'message' => 'OK', 'job' => $JobData->SWMP_JOBNO, 'flag' => $isAlreadyCalculated, 'remark' => 'sibling job calculation might be need to check more detail'];
+                } else {
+                    $status = ['code' => false, 'message' => 'Supply is not enough', 'job' => $JobData->SWMP_JOBNO, 'flag' => $isAlreadyCalculated];
+                }
+            } else {
+                $status = ['code' => true, 'message' => 'OK', 'job' => $JobData->SWMP_JOBNO];
+            }
         } else {
             $status = ['code' => true, 'message' => 'OK', 'job' => $JobData->SWMP_JOBNO];
         }
@@ -476,7 +492,7 @@ class ProductionController extends Controller
         } else {
             return [
                 'status' => $status,
-                'data' => $finalOutstanding
+                'data' => !$isJobContextCalculationOK ? $finalOutstanding : []
             ];
         }
     }
