@@ -3,6 +3,7 @@
 use App\Http\Controllers\ICTController;
 use App\Http\Controllers\ProductionController;
 use App\Http\Controllers\QPITController;
+use App\Http\Controllers\RatingController;
 use App\Http\Controllers\RepairDataController;
 use App\Http\Controllers\UserController;
 use Illuminate\Http\Request;
@@ -41,6 +42,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('trace-paginate', [RepairDataController::class, 'trace']);
         Route::get('trace-to-spreadsheet', [RepairDataController::class, 'traceToSpreadsheet']);
     });
+
+    Route::prefix('users')->group(function () {
+        Route::delete('logout', [UserController::class, 'logout']);
+    });
 });
 
 Route::prefix('ict')->group(function () {
@@ -60,7 +65,10 @@ Route::prefix('password')->group(function () {
 
 Route::prefix('users')->group(function () {
     Route::post('login', [UserController::class, 'login']);
-    Route::delete('logout', [UserController::class, 'logout'])->middleware('auth:sanctum');
+});
+
+Route::prefix('engtrial')->group(function () {
+    Route::get('report1', [RatingController::class, 'getPercentagePerLineMachinePeriod']);
 });
 
 Route::post('/welcome', function () {
