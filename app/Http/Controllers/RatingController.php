@@ -13,7 +13,17 @@ class RatingController extends Controller
             ->where('txttgl', '>=', $request->dateFrom)
             ->where('txttgl', '<=', $request->dateTo)
             ->where('txtmesin', $request->machineBrand)
-            ->get(['txtline', 'txtict']);
+            ->groupBy(
+                'txtline',
+                'txtict',
+            )
+            ->get([
+                'txtline',
+                'txtict',
+                DB::raw('SUM(txtcheck) txtcheck'),
+                DB::raw('SUM(txtpass) txtpass'),
+                DB::raw('SUM(txtpass)/SUM(txtcheck)*100 txtpercen')
+            ]);
         return ['data' => $data];
     }
 }
