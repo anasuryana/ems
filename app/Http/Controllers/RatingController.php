@@ -16,8 +16,11 @@ class RatingController extends Controller
             ->groupBy(
                 'txtline',
                 'txtict',
+                'txttgl'
             )
+            ->orderBy('txttgl')
             ->get([
+                'txttgl',
                 'txtline',
                 'txtict',
                 DB::raw('SUM(txtcheck) txtcheck'),
