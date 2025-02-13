@@ -18,6 +18,8 @@ class RatingController extends Controller
                 'txtict',
                 'txttgl'
             )
+            ->orderBy('txtline')
+            ->orderBy('txtict')
             ->orderBy('txttgl')
             ->get([
                 'txttgl',
