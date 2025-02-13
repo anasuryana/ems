@@ -16,11 +16,35 @@ class RatingController extends Controller
             ->groupBy(
                 'txtline',
                 'txtict',
-                'txttgl'
             )
             ->orderBy('txtline')
             ->orderBy('txtict')
+            ->get([
+                'txtline',
+                'txtict',
+                DB::raw('SUM(txtcheck) txtcheck'),
+                DB::raw('SUM(txtpass) txtpass'),
+                DB::raw('SUM(txtpass)/SUM(txtcheck)*100 txtpercen')
+            ]);
+        return ['data' => $data];
+    }
+
+    function getPercentagePerLineMachinePeriodDetail1(Request $request)
+    {
+        $data = DB::connection('mysql_engtrial')->table('tbl_passrate')
+            ->where('txttgl', '>=', $request->dateFrom)
+            ->where('txttgl', '<=', $request->dateTo)
+            ->where('txtmesin', $request->machineBrand)
+            ->where('txtline', $request->lineCode)
+            ->where('txtict', $request->machineCode)
+            ->groupBy(
+                'txttgl',
+                'txtline',
+                'txtict',
+            )
             ->orderBy('txttgl')
+            ->orderBy('txtline')
+            ->orderBy('txtict')
             ->get([
                 'txttgl',
                 'txtline',

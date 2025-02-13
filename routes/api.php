@@ -69,6 +69,7 @@ Route::prefix('users')->group(function () {
 
 Route::prefix('engtrial')->group(function () {
     Route::get('report1', [RatingController::class, 'getPercentagePerLineMachinePeriod']);
+    Route::get('reportd1', [RatingController::class, 'getPercentagePerLineMachinePeriodDetail1']);
 });
 
 Route::post('/welcome', function () {
