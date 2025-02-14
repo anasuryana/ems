@@ -19,6 +19,26 @@ class RepairDataController extends Controller
             ->where('BoardNo', 'like', '%' . $request->type . '%')
             ->where('PdtNo', 'like', '%' . $request->model . '%')
             ->where('Repair_line', 'like', '%' . $request->line . '%')
+            ->select(
+                'Repair_date',
+                'Repair_line',
+                'PdtNo',
+                DB::raw("REPLACE(AssyNo, '-', '') AssyNo"),
+                'BoardNo',
+                'Repair_NGStsn',
+                'Repair_PCBSrl',
+                'Repair_PCBNo',
+                'Repair_JMCode',
+                'Repair_pnmn',
+                'Repair_defect',
+                'Repair_Loc1',
+                'Repair_loc2',
+                'Repair_loc3',
+                'Repair_loc4',
+                'Repair_loc5',
+                'Repair_week',
+                'Repair_cat',
+            )
             ->orderBy('Repair_date')->paginate(500);
         return ['data' => $data];
     }
@@ -33,6 +53,26 @@ class RepairDataController extends Controller
             ->where('BoardNo', 'like', '%' . $request->type . '%')
             ->where('PdtNo', 'like', '%' . $request->model . '%')
             ->where('Repair_line', 'like', '%' . $request->line . '%')
+            ->select(
+                'Repair_date',
+                'Repair_line',
+                'PdtNo',
+                DB::raw("REPLACE(AssyNo, '-', '') AssyNo"),
+                'BoardNo',
+                'Repair_NGStsn',
+                'Repair_PCBSrl',
+                'Repair_PCBNo',
+                'Repair_JMCode',
+                'Repair_pnmn',
+                'Repair_defect',
+                'Repair_Loc1',
+                'Repair_loc2',
+                'Repair_loc3',
+                'Repair_loc4',
+                'Repair_loc5',
+                'Repair_week',
+                'Repair_cat',
+            )
             ->orderBy('Repair_date');
 
         $datas = $data->get();

@@ -25,6 +25,32 @@ class QPITController extends Controller
             ->where('PdtNo', 'like', '%' . $request->model . '%')
             ->where('Test_Result', 'like', '%' . $request->test_result . '%')
             ->where('Line_Name', 'like', '%' . $request->line . '%')
+            ->select(
+                'Test_Time',
+                'Test_Process',
+                'Production_Control_No',
+                DB::raw("REPLACE(AssyNo, '-', '') AssyNo"),
+                'BoardNo',
+                'PdtNo',
+                'Test_Result',
+                'Error_Code',
+                'Error_Class',
+                'Error_Details',
+                'Error_Address',
+                'Error_Pin_No',
+                'Line_Name',
+                'Shift_Name',
+                'PC_No',
+                'Jig_No',
+                'Power_Box_No',
+                'QPITPC_System_Program_Ver',
+                'Target_Program_Ver',
+                'Test_Program_Ver',
+                'Detailed_Setting',
+                'Function_Test_Sum',
+                'Operator_Name',
+                'Password_Ver',
+            )
             ->orderBy('Test_Time')->paginate(500);
         return ['data' => $data];
     }
@@ -41,7 +67,32 @@ class QPITController extends Controller
             ->where('Test_Result', 'like', '%' . $request->test_result . '%')
             ->where('Line_Name', 'like', '%' . $request->line . '%')->orderBy('Test_Time');
 
-        $datas = $data->get();
+        $datas = $data->get([
+            'Test_Time',
+            'Test_Process',
+            'Production_Control_No',
+            DB::raw("REPLACE(AssyNo, '-', '') AssyNo"),
+            'BoardNo',
+            'PdtNo',
+            'Test_Result',
+            'Error_Code',
+            'Error_Class',
+            'Error_Details',
+            'Error_Address',
+            'Error_Pin_No',
+            'Line_Name',
+            'Shift_Name',
+            'PC_No',
+            'Jig_No',
+            'Power_Box_No',
+            'QPITPC_System_Program_Ver',
+            'Target_Program_Ver',
+            'Test_Program_Ver',
+            'Detailed_Setting',
+            'Function_Test_Sum',
+            'Operator_Name',
+            'Password_Ver',
+        ]);
         $spreadSheet = new Spreadsheet();
         $sheet = $spreadSheet->getActiveSheet();
         $sheet->setTitle('QPIT Log');
@@ -76,7 +127,7 @@ class QPITController extends Controller
             $sheet->setCellValue([1, $i], $r->Test_Time);
             $sheet->setCellValue([2, $i], $r->Test_Process);
             $sheet->setCellValue([3, $i], $r->Production_Control_No);
-            $sheet->setCellValue([4, $i], $r->AssyNo);
+            $sheet->setCellValue([4, $i], str_replace('-', '', $r->AssyNo));
             $sheet->setCellValue([5, $i], $r->BoardNo);
             $sheet->setCellValue([6, $i], $r->PdtNo);
             $sheet->setCellValue([7, $i], $r->Test_Result);

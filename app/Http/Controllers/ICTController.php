@@ -379,6 +379,24 @@ class ICTController extends Controller
             ->where('PdtNo', 'like', '%' . $request->model . '%')
             ->where('Test_Result', 'like', '%' . $request->test_result . '%')
             ->where('Line_Name', 'like', '%' . $request->line . '%')
+            ->select(
+                'Test_Time',
+                'Test_Process',
+                'Production_Control_No',
+                DB::raw("REPLACE(AssyNo, '-','') AssyNo"),
+                'BoardNo',
+                'PdtNo',
+                'Test_Result',
+                'Error_Class',
+                'Error_Address',
+                'Error_Details',
+                'Notes',
+                'Line_Name',
+                'Shift_Name',
+                'ICT_No',
+                'Jig_No',
+                'Operator_Name'
+            )
             ->orderBy('Test_Time')->paginate(500);
         return ['data' => $data];
     }
@@ -395,7 +413,24 @@ class ICTController extends Controller
             ->where('Test_Result', 'like', '%' . $request->test_result . '%')
             ->where('Line_Name', 'like', '%' . $request->line . '%')->orderBy('Test_Time');
 
-        $datas = $data->get();
+        $datas = $data->get([
+            'Test_Time',
+            'Test_Process',
+            'Production_Control_No',
+            DB::raw("REPLACE(AssyNo, '-','') AssyNo"),
+            'BoardNo',
+            'PdtNo',
+            'Test_Result',
+            'Error_Class',
+            'Error_Address',
+            'Error_Details',
+            'Notes',
+            'Line_Name',
+            'Shift_Name',
+            'ICT_No',
+            'Jig_No',
+            'Operator_Name'
+        ]);
         $spreadSheet = new Spreadsheet();
         $sheet = $spreadSheet->getActiveSheet();
         $sheet->setTitle('ICT Log');
