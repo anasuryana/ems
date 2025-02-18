@@ -41,6 +41,8 @@ class RatingController extends Controller
                 'txttgl',
                 'txtline',
                 'txtict',
+                'txtjig',
+                'txtmodel',
             )
             ->orderBy('txttgl')
             ->orderBy('txtline')
@@ -49,6 +51,8 @@ class RatingController extends Controller
                 'txttgl',
                 'txtline',
                 'txtict',
+                'txtjig',
+                'txtmodel',
                 DB::raw('SUM(txtcheck) txtcheck'),
                 DB::raw('SUM(txtpass) txtpass'),
                 DB::raw('SUM(txtpass)/SUM(txtcheck)*100 txtpercen')
