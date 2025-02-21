@@ -490,10 +490,19 @@ class ProductionController extends Controller
             header('Access-Control-Allow-Origin: *');
             $writer->save('php://output');
         } else {
-            return [
-                'status' => $status,
-                'data' => !$isJobContextCalculationOK ? $finalOutstanding : []
-            ];
+            if ($request->isFromWeb) {
+                return [
+                    'status' => $status,
+                    'data' => !$isJobContextCalculationOK ? $finalOutstanding : [],
+                    'dataSupplied' => !$isJobContextCalculationOK ? $suppliedMaterial : [],
+                    'dataJob' => !$isJobContextCalculationOK ? $JobOutput : []
+                ];
+            } else {
+                return [
+                    'status' => $status,
+                    'data' => !$isJobContextCalculationOK ? $finalOutstanding : [],
+                ];
+            }
         }
     }
 
