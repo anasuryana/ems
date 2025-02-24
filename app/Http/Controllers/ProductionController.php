@@ -21,7 +21,7 @@ class ProductionController extends Controller
     {
         Logger('Mulai kalkulasi');
         $year = date('y');
-        $jobWithoutYear = $request->doc . '-' . $request->itemCode;
+        $jobWithoutYear = strtoupper($request->doc . '-' . $request->itemCode);
         $job = $year . '-' . $jobWithoutYear;
 
         $isAlreadyCalculated  = false;
@@ -170,32 +170,22 @@ class ProductionController extends Controller
             $uniqueJobList = $suppliedMaterialByUK->pluck('JOBNO')->toArray();
 
             if ($uniqueJobList) {
-                $JobOutput = $processContext ? DB::connection('sqlsrv_wms')->table('WMS_CLS_JOB')
-                    ->leftJoin('XWO', 'CLS_JOBNO', '=', 'PDPP_WONO')
-                    ->whereIn('CLS_JOBNO', $uniqueJobList)
-                    ->where('CLS_PROCD', $processContext->PPSN1_PROCD)
-                    ->groupBy('CLS_JOBNO', 'CLS_PROCD', 'CLS_MDLCD', 'PDPP_BOMRV')
-                    ->orderBy(DB::raw('MIN(CLS_LUPDT)'))
-                    ->get([
-                        'CLS_JOBNO',
-                        DB::raw("RTRIM(CLS_PROCD) CLS_PROCD"),
-                        DB::raw("RTRIM(CLS_MDLCD) CLS_MDLCD"),
-                        DB::raw("PDPP_BOMRV CLS_BOMRV"),
-                        DB::raw("SUM(CLS_QTY) CLSQTY"),
-                        DB::raw("MAX(CLS_PSNNO) CLS_PSNNO")
-                    ]) :  DB::connection('sqlsrv_wms')->table('WMS_CLS_JOB')
+                $_query =  DB::connection('sqlsrv_wms')->table('WMS_CLS_JOB')
                     ->leftJoin('XWO', 'CLS_JOBNO', '=', 'PDPP_WONO')
                     ->whereIn('CLS_JOBNO', $uniqueJobList)
                     ->groupBy('CLS_JOBNO', 'CLS_PROCD', 'CLS_MDLCD', 'PDPP_BOMRV')
-                    ->orderBy(DB::raw('MIN(CLS_LUPDT)'))
-                    ->get([
-                        'CLS_JOBNO',
-                        DB::raw("RTRIM(CLS_PROCD) CLS_PROCD"),
-                        DB::raw("RTRIM(CLS_MDLCD) CLS_MDLCD"),
-                        DB::raw("PDPP_BOMRV CLS_BOMRV"),
-                        DB::raw("SUM(CLS_QTY) CLSQTY"),
-                        DB::raw("MAX(CLS_PSNNO) CLS_PSNNO")
-                    ]);
+                    ->orderBy(DB::raw('MIN(CLS_LUPDT)'));
+                if ($processContext) {
+                    $_query->where('CLS_PROCD', $processContext->PPSN1_PROCD);
+                }
+                $JobOutput = $_query->get([
+                    DB::raw('UPPER(CLS_JOBNO) CLS_JOBNO'),
+                    DB::raw("RTRIM(CLS_PROCD) CLS_PROCD"),
+                    DB::raw("RTRIM(CLS_MDLCD) CLS_MDLCD"),
+                    DB::raw("PDPP_BOMRV CLS_BOMRV"),
+                    DB::raw("SUM(CLS_QTY) CLSQTY"),
+                    DB::raw("MAX(CLS_PSNNO) CLS_PSNNO")
+                ]);
                 Logger('Inisialisasi $JobOutput');
 
                 foreach ($JobOutput as $r) {
@@ -494,8 +484,9 @@ class ProductionController extends Controller
                 return [
                     'status' => $status,
                     'data' => !$isJobContextCalculationOK ? $finalOutstanding : [],
-                    'dataSupplied' => !$isJobContextCalculationOK ? $suppliedMaterial : [],
-                    'dataJob' => !$isJobContextCalculationOK ? $JobOutput : []
+                    'dataSupplied' =>  $suppliedMaterial,
+                    'dataJob' =>  $JobOutput,
+                    'dataRequirement' => $anotherRequirement
                 ];
             } else {
                 return [
