@@ -143,4 +143,12 @@ class RatingController extends Controller
 
         $writer->save('php://output');
     }
+
+    function getModel(Request $request)
+    {
+        $data = DB::connection('mysql_engtrial_qpit')->table('tbl_passrate')
+            ->groupBy('txtmodel')
+            ->get([DB::raw('LTRIM(RTRIM(txtmodel)) txtmodel')]);
+        return ['data' => $data];
+    }
 }
