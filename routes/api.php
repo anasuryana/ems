@@ -71,6 +71,7 @@ Route::prefix('engtrial')->group(function () {
     Route::get('report1', [RatingController::class, 'getPercentagePerLineMachinePeriod']);
     Route::get('reportd1', [RatingController::class, 'getPercentagePerLineMachinePeriodDetail1']);
     Route::get('report1-to-spreadsheet', [RatingController::class, 'getPercentagePerLineMachinePeriodtoSpreadsheet']);
+    Route::get('qpit-model', [RatingController::class, 'getModel']);
 });
 
 Route::post('/welcome', function () {
