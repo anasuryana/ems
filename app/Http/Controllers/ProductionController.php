@@ -578,4 +578,25 @@ class ProductionController extends Controller
 
         return $affectedRows ? ['message' => 'Recorded successfully'] : ['message' => 'Failed, please try again'];
     }
+
+    function getActivatedTLWS(Request $request)
+    {
+        $data = DB::connection('sqlsrv_wms')->table('WMS_TLWS_TBL')->where('TLWS_STSFG', 'ACT')
+            ->where('TLWS_JOBNO', 'LIKE', '%' . $request->doc . '%')
+            ->where('TLWS_MDLCD', $request->itemCode)
+            ->get(['TLWS_SPID', 'TLWS_MDLCD', DB::raw("RTRIM(TLWS_JOBNO) TLWS_JOBNO"), 'TLWS_PROCD', 'TLWS_LUPDT', 'TLWS_LUPBY']);
+        return ['data' => $data];
+    }
+
+    function setCompletionTLWS(Request $request)
+    {
+        $affectedRows = DB::connection('sqlsrv_wms')->table('WMS_TLWS_TBL')->where('TLWS_STSFG', 'ACT')
+            ->where('TLWS_SPID', $request->doc)
+            ->where('TLWS_MDLCD', $request->itemCode)
+            ->update(['TLWS_STSFG' => 'COM']);
+
+        return [
+            'message' => $affectedRows ? 'Set completion successfully' : 'nothing updated',
+        ];
+    }
 }
