@@ -590,10 +590,14 @@ class ProductionController extends Controller
 
     function setCompletionTLWS(Request $request)
     {
-        $affectedRows = DB::connection('sqlsrv_wms')->table('WMS_TLWS_TBL')->where('TLWS_STSFG', 'ACT')
-            ->where('TLWS_SPID', $request->doc)
-            ->where('TLWS_MDLCD', $request->itemCode)
-            ->update(['TLWS_STSFG' => 'COM']);
+        if (in_array($request->groupId, ['MSPV', 'MPRC'])) {
+            $affectedRows = DB::connection('sqlsrv_wms')->table('WMS_TLWS_TBL')->where('TLWS_STSFG', 'ACT')
+                ->where('TLWS_SPID', $request->doc)
+                ->where('TLWS_MDLCD', $request->itemCode)
+                ->update(['TLWS_STSFG' => 'COM']);
+        } else {
+            return response()->json(['message' => 'You have read-only access'], 403);
+        }
 
         return [
             'message' => $affectedRows ? 'Set completion successfully' : 'nothing updated',
