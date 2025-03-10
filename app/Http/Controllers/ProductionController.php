@@ -590,7 +590,7 @@ class ProductionController extends Controller
 
     function setCompletionTLWS(Request $request)
     {
-        if (in_array($request->groupId, ['MSPV', 'MPRC'])) {
+        if (in_array($request->groupId, ['MSPV', 'MPRC', 'ADMIN'])) {
             $affectedRows = DB::connection('sqlsrv_wms')->table('WMS_TLWS_TBL')->where('TLWS_STSFG', 'ACT')
                 ->where('TLWS_SPID', $request->doc)
                 ->where('TLWS_MDLCD', $request->itemCode)
