@@ -410,7 +410,7 @@ class ProductionController extends Controller
                     }
                 }
                 if ($isJobContextCalculationOK) {
-                    $status = ['code' => false, 'message' => 'OK', 'job' => $JobData->SWMP_JOBNO, 'flag' => $isAlreadyCalculated, 'remark' => 'sibling job calculation might be need to check more detail'];
+                    $status = ['code' => true, 'message' => 'OK', 'job' => $JobData->SWMP_JOBNO, 'flag' => $isAlreadyCalculated, 'remark' => 'sibling job calculation might be need to check more detail'];
                 } else {
                     $status = ['code' => false, 'message' => 'Supply is not enough', 'job' => $JobData->SWMP_JOBNO, 'flag' => $isAlreadyCalculated];
                 }
