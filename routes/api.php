@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ICTController;
+use App\Http\Controllers\LabelController;
 use App\Http\Controllers\ProductionController;
 use App\Http\Controllers\QPITController;
 use App\Http\Controllers\RatingController;
@@ -86,3 +87,7 @@ Route::post('/welcome', function () {
 Route::get('/welcome', function () {
     return 'login dulud';
 })->name('login');
+
+Route::prefix('label')->group(function () {
+    Route::get('history-tree', [LabelController::class, 'splitTreeHistory']);
+});
