@@ -11,15 +11,6 @@ class LabelController extends Controller
     {
 
         $tree = [];
-        $rootData = DB::connection('sqlsrv_wms')->table('raw_material_labels')->where('code', $request->code)->first();
-        if (!$rootData) {
-            return ['message' => 'Not found'];
-        }
-        $tree = ['text' => [
-            'name' => $request->code,
-            'desc' =>  'QTY:' . (int)$rootData->quantity
-
-        ], 'children' => []];
 
         $code = $request->code;
         $item_code = $request->item_code;
@@ -44,6 +35,25 @@ class LabelController extends Controller
         $suppliedMaterial = DB::connection('sqlsrv_wms')->query()
             ->fromSub($_suppliedMaterial, 'v1')
             ->union($__suppliedMaterial);
+
+        $rootData = DB::connection('sqlsrv_wms')->table('raw_material_labels')
+            ->leftJoinSub($suppliedMaterial, 'v2', 'TRACE_UNQ', '=', 'code')
+            ->where('code', $request->code)->first();
+        if (!$rootData) {
+            return ['message' => 'Not found'];
+        }
+        $status = '';
+        if (!$rootData->splitted) {
+            $status = 'Status:NOT SPLITTED';
+        }
+        if ($rootData->TRACE_UNQ) {
+            $status = 'Status:Scanned Tracebility ✔';
+        }
+        $tree = ['text' => [
+            'name' => $rootData->code,
+            'desc' =>  $status,
+            'data' => 'QTY:' . (int)$rootData->quantity
+        ], 'children' => []];
 
         $_data = DB::connection('sqlsrv_wms')->table('raw_material_labels')
             ->leftJoinSub($suppliedMaterial, 'v2', 'TRACE_UNQ', '=', 'code')
