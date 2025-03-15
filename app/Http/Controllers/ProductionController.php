@@ -299,6 +299,7 @@ class ProductionController extends Controller
         if ($finalOutstanding) {
             // find alternative part
             if ($isAlreadyCalculated) {
+                // find on ENG BOMSTX
                 foreach ($finalOutstanding as $r) {
                     $ENGBOM = DB::connection('sqlsrv_wms')->table('ENG_BOMSTX')
                         ->select('MAIN_PART_CODE', 'EPSON_ORG_PART', 'SUB', 'SUB1')
@@ -331,6 +332,8 @@ class ProductionController extends Controller
                     }
                     unset($a);
                 }
+
+                // reset what part still not filled
                 $finalOutstanding = [];
                 foreach ($anotherRequirement as $r) {
                     $_ostQty = $r->REQQT - $r->FILLQT;
@@ -341,7 +344,54 @@ class ProductionController extends Controller
                         ];
                     }
                 }
+
+                if ($finalOutstanding) {
+                    // find on main common part
+                    foreach ($finalOutstanding as $r) {
+                        $commonPart = DB::connection('sqlsrv_wms')->table('ENG_COMMPRT_LST')
+                            ->select('ITMCDPRI', 'ITMCDALT')
+                            ->where('ITMCDPRI', $r['partCode'])
+                            ->get();
+                        foreach ($anotherRequirement as &$a) {
+                            foreach ($commonPart as $alt) {
+                                if ($a->MBOM_ITMCD == $alt->ITMCDPRI) {
+                                    foreach ($suppliedMaterial as &$s) {
+                                        if ($s->ITMCD == $alt->ITMCDALT && $s->PSNNO == $a->PSNNO && $s->QTY > 0) {
+                                            if ($a->REQQT == $a->FILLQT) {
+                                                break;
+                                            }
+
+                                            $_req = $a->REQQT - $a->FILLQT;
+                                            if ($s->QTY >= $_req) {
+                                                $a->FILLQT += $_req;
+                                                $s->QTY -= $_req;
+                                            } else {
+                                                $a->FILLQT += $s->QTY;
+                                                $s->QTY = 0;
+                                            }
+                                        }
+                                    }
+                                    unset($s);
+                                }
+                            }
+                        }
+                        unset($a);
+                    }
+
+                    // reset what part still not filled
+                    $finalOutstanding = [];
+                    foreach ($anotherRequirement as $r) {
+                        $_ostQty = $r->REQQT - $r->FILLQT;
+                        if ($_ostQty > 0) {
+                            $finalOutstanding[] = [
+                                'partCode' => $r->MBOM_ITMCD,
+                                'outstandingQty' => $r->REQQT - $r->FILLQT,
+                            ];
+                        }
+                    }
+                }
             } else {
+
                 $__isfound = false;
                 foreach ($finalOutstanding as $r) {
                     $ENGBOM = DB::connection('sqlsrv_wms')->table('ENG_BOMSTX')
@@ -353,7 +403,6 @@ class ProductionController extends Controller
                         foreach ($requirement as &$a) {
                             if ($a->MBOM_ITMCD == $ENGBOM->MAIN_PART_CODE) {
                                 foreach ($suppliedMaterial as &$s) {
-                                    // die('sini oy1');
 
                                     if ($s->ITMCD == $ENGBOM->SUB && $s->QTY > 0) {
                                         $__isfound = true;
@@ -378,6 +427,7 @@ class ProductionController extends Controller
                     }
                 }
 
+                // reset final outstanding when CLS Empty
                 if ($__isfound) {
                     $finalOutstanding = [];
                     foreach ($requirement as $r) {
@@ -395,6 +445,65 @@ class ProductionController extends Controller
                                     'partCode' => $r->MBOM_ITMCD,
                                     'outstandingQty' => $r->REQQT - $r->FILLQT,
                                 ];
+                            }
+                        }
+                    }
+                }
+
+                $__isfound = false;
+
+                if ($finalOutstanding) {
+                    // find on main common part
+                    foreach ($finalOutstanding as $r) {
+                        $commonPart = DB::connection('sqlsrv_wms')->table('ENG_COMMPRT_LST')
+                            ->select('ITMCDPRI', 'ITMCDALT')
+                            ->where('ITMCDPRI', $r['partCode'])
+                            ->get();
+                        foreach ($requirement as &$a) {
+                            foreach ($commonPart as $alt) {
+                                if ($a->MBOM_ITMCD == $alt->ITMCDPRI) {
+                                    foreach ($suppliedMaterial as &$s) {
+                                        if ($s->ITMCD == $alt->ITMCDALT && $s->QTY > 0) {
+                                            if ($a->REQQT == $a->FILLQT) {
+                                                break;
+                                            }
+
+                                            $_req = $a->REQQT - $a->FILLQT;
+                                            if ($s->QTY >= $_req) {
+                                                $a->FILLQT += $_req;
+                                                $s->QTY -= $_req;
+                                            } else {
+                                                $a->FILLQT += $s->QTY;
+                                                $s->QTY = 0;
+                                            }
+                                        }
+                                    }
+                                    unset($s);
+                                }
+                            }
+                        }
+                        unset($a);
+                    }
+
+                    // reset final outstanding when CLS Empty
+                    if ($__isfound) {
+                        $finalOutstanding = [];
+                        foreach ($requirement as $r) {
+                            $_ostQty = $r->REQQT - $r->FILLQT;
+                            if ($_ostQty > 0) {
+                                if ($processContext) {
+                                    if ($processContext->PPSN1_PROCD == $r->MBOM_PROCD) {
+                                        $finalOutstanding[] = [
+                                            'partCode' => $r->MBOM_ITMCD,
+                                            'outstandingQty' => $r->REQQT - $r->FILLQT,
+                                        ];
+                                    }
+                                } else {
+                                    $finalOutstanding[] = [
+                                        'partCode' => $r->MBOM_ITMCD,
+                                        'outstandingQty' => $r->REQQT - $r->FILLQT,
+                                    ];
+                                }
                             }
                         }
                     }
