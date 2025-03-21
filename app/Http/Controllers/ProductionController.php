@@ -12,6 +12,8 @@ use PhpOffice\PhpSpreadsheet\Spreadsheet;
 
 class ProductionController extends Controller
 {
+    protected $historySplitLabel = [];
+
     public function __construct()
     {
         date_default_timezone_set('Asia/Jakarta');
@@ -711,5 +713,247 @@ class ProductionController extends Controller
         return [
             'message' => $affectedRows ? 'Set completion successfully' : 'nothing updated',
         ];
+    }
+
+    function getSupplyStatusByPSN(Request $request)
+    {
+        //validator
+        $validator = Validator::make(
+            $request->json()->all(),
+            [
+                'doc' => 'required',
+                'partCode' => 'required',
+                'detail' => 'required|array',
+                'detail.*.job' => 'required',
+            ],
+            [
+                'doc.required' => ':attribute is required',
+                'partCode.required' => ':attribute is required',
+                'detail.required' => ':attribute is required',
+                'detail.array' => ':attribute should be array',
+                'detail.*.job.required' => ':attribute is required',
+            ]
+        );
+
+        if ($validator->fails()) {
+            return response()->json($validator->errors()->all(), 406);
+        }
+
+        $data = $request->json()->all();
+
+        //supplied & scanned item
+        // get balance of Supplied Material
+        $__suppliedMaterial = DB::connection('sqlsrv_wms')->table('WMS_SWPS_HIS')
+            ->whereIn('SWPS_PSNNO', [$data['doc']])
+            ->where('SWPS_REMARK', 'OK')
+            ->where('SWPS_NITMCD', $data['partCode'])
+            ->groupBy('SWPS_NITMCD', 'NQTY', 'SWPS_NUNQ', 'SWPS_NLOTNO')
+            ->select(
+                DB::raw('RTRIM(SWPS_NITMCD) ITMCD'),
+                DB::raw('NQTY QTY'),
+                DB::raw('RTRIM(SWPS_NLOTNO) LOTNO'),
+                DB::raw('RTRIM(SWPS_NUNQ) UNQ'),
+                DB::raw('NQTY BAKQTY'),
+            );
+
+        $_suppliedMaterial = DB::connection('sqlsrv_wms')->table('WMS_SWMP_HIS')
+            ->whereIn('SWMP_PSNNO', [$data['doc']])
+            ->where('SWMP_REMARK', 'OK')
+            ->where('SWMP_ITMCD', $data['partCode'])
+            ->groupBy('SWMP_ITMCD', 'SWMP_QTY', 'SWMP_UNQ', 'SWMP_LOTNO')
+            ->select(
+                DB::raw('RTRIM(SWMP_ITMCD) ITMCD'),
+                DB::raw('SWMP_QTY QTY'),
+                DB::raw('RTRIM(SWMP_LOTNO) LOTNO'),
+                DB::raw('RTRIM(SWMP_UNQ) UNQ'),
+                DB::raw('SWMP_QTY BAKQTY'),
+            );
+
+        $scannedLabels = DB::connection('sqlsrv_wms')->query()
+            ->fromSub($_suppliedMaterial, 'v1')
+            ->union($__suppliedMaterial)->get();
+        $scannedLabelDetails = [];
+        //supplied but not scanned
+
+        // alternative part
+
+        // get history running time
+        $uniqueJobInput = [];
+        foreach ($data['detail'] as $r) {
+            if (!in_array($r['job'], $uniqueJobInput)) {
+                $uniqueJobInput[] = $r['job'];
+            }
+        }
+
+        $historyClosingJob = DB::connection('sqlsrv_wms')->table('WMS_CLS_JOB')
+            ->whereIn('CLS_JOBNO', $uniqueJobInput)
+            ->get(['CLS_SPID', 'CLS_PROCD', 'CLS_MDLCD', 'CLS_BOMRV', 'CLS_JOBNO', 'CLS_QTY', 'CLS_LUPDT', 'CLS_LINENO', DB::raw("0 CLS_QTY_PLOT")]);
+
+        // bom
+        $anotherRequirement = new Collection();
+        foreach ($data['detail'] as $r) {
+            $_MDLCD = $_BOMRV = $_PROCD = $_LUPDT = $_LINE = '';
+            foreach ($historyClosingJob as $h) {
+                if ($r['job'] == $h->CLS_JOBNO) {
+                    $_MDLCD = $h->CLS_MDLCD;
+                    $_BOMRV = $h->CLS_BOMRV;
+                    $_PROCD = $h->CLS_PROCD;
+                    $_LUPDT .= $h->CLS_LUPDT . ',';
+                    $_LINE .= $h->CLS_LINENO . ',';
+                }
+            }
+            if (empty($_MDLCD)) {
+                continue;
+            }
+            $_requirement = DB::connection('sqlsrv_wms')->table('VCIMS_MBOM_TBL')
+                ->where('MBOM_MDLCD', $_MDLCD)
+                ->where('MBOM_BOMRV', $_BOMRV)
+                ->where('MBOM_PROCD', $_PROCD)
+                ->where('MBOM_ITMCD', $data['partCode'])
+                ->groupBy('MBOM_ITMCD', 'MBOM_SPART', 'MBOM_PROCD')
+                ->get([
+                    DB::raw("'" . $r['job'] . "' FLAGJOBNO"),
+                    DB::raw("'" . $_LUPDT . "' LUPDT"),
+                    DB::raw("'" . $_LINE . "' LINEPROD"),
+                    DB::raw('RTRIM(MBOM_ITMCD) MBOM_ITMCD'),
+                    DB::raw('RTRIM(MBOM_SPART) MBOM_SPART'),
+                    DB::raw('RTRIM(MBOM_PROCD) MBOM_PROCD'),
+                    DB::raw('SUM(MBOM_QTY) PER'),
+                    DB::raw('SUM(MBOM_QTY)*' . (int)$r['qty'] . ' REQQT'),
+                    DB::raw('0 FILLQT')
+                ]);
+            $anotherRequirement = $anotherRequirement->merge($_requirement);
+        }
+
+        // calculate
+        foreach ($anotherRequirement as $h) {
+            $__suppliedMaterial = DB::connection('sqlsrv_wms')->table('WMS_SWPS_HIS')
+                ->whereIn('SWPS_PSNNO', [$data['doc']])
+                ->where('SWPS_REMARK', 'OK')
+                ->where('SWPS_NITMCD', $data['partCode'])
+                ->where('SWPS_JOBNO', $h->FLAGJOBNO)
+                ->groupBy('SWPS_NITMCD', 'NQTY', 'SWPS_NUNQ', 'SWPS_NLOTNO')
+                ->select(
+                    DB::raw('RTRIM(SWPS_NITMCD) ITMCD'),
+                    DB::raw('NQTY QTY'),
+                    DB::raw('RTRIM(SWPS_NLOTNO) LOTNO'),
+                    DB::raw('RTRIM(SWPS_NUNQ) UNQ'),
+                    DB::raw('NQTY BAKQTY'),
+                );
+
+            $_suppliedMaterial = DB::connection('sqlsrv_wms')->table('WMS_SWMP_HIS')
+                ->whereIn('SWMP_PSNNO', [$data['doc']])
+                ->where('SWMP_REMARK', 'OK')
+                ->where('SWMP_ITMCD', $data['partCode'])
+                ->where('SWMP_JOBNO', $h->FLAGJOBNO)
+                ->groupBy('SWMP_ITMCD', 'SWMP_QTY', 'SWMP_UNQ', 'SWMP_LOTNO')
+                ->select(
+                    DB::raw('RTRIM(SWMP_ITMCD) ITMCD'),
+                    DB::raw('SWMP_QTY QTY'),
+                    DB::raw('RTRIM(SWMP_LOTNO) LOTNO'),
+                    DB::raw('RTRIM(SWMP_UNQ) UNQ'),
+                    DB::raw('SWMP_QTY BAKQTY'),
+                );
+
+            $__labelRelatedJOB = DB::connection('sqlsrv_wms')->query()
+                ->fromSub($_suppliedMaterial, 'v1')
+                ->union($__suppliedMaterial)->get();
+            foreach ($__labelRelatedJOB as $l) {
+                $reqBal = $h->REQQT - $h->FILLQT;
+                if ($reqBal > 0) {
+                    foreach ($scannedLabels as $lm) {
+                        if ($l->UNQ == $lm->UNQ) {
+                            if ($lm->QTY > 0) {
+                                $_qtyContextUseLabel = $reqBal;
+                                if ($lm->QTY >= $reqBal) {
+                                    $h->FILLQT += $reqBal;
+                                    $lm->QTY -= $reqBal;
+                                } else {
+                                    $_qtyContextUseLabel = $lm->QTY;
+                                    $h->FILLQT += $lm->QTY;
+                                    $lm->QTY = 0;
+                                }
+                                $scannedLabelDetails[] = [
+                                    'ITMCD' => $lm->ITMCD,
+                                    'QTY' => $l->QTY,
+                                    'UNQ' => $lm->UNQ,
+                                    'LINE' => $h->LINEPROD,
+                                    'CLS_LUPDT' => $h->LUPDT,
+                                    'CALCULATE_USE' => $_qtyContextUseLabel,
+                                    'BALANCE_LABEL' => $lm->BAKQTY - $_qtyContextUseLabel,
+                                    'RESULT' => '',
+                                ];
+                            }
+                            break;
+                        }
+                    }
+                    unset($lm);
+                } else {
+                    break;
+                }
+            }
+        }
+
+        return ['data' => $scannedLabelDetails, '$anotherRequirement' => $anotherRequirement, 'scannedLabels' => $scannedLabels];
+    }
+
+    function getTreeInside(Request $request)
+    {
+        $treeInside = $this->_findChild($request->code, $request->item_code);
+        return ['data' => $treeInside, 'historySplitLabel' => $this->historySplitLabel];
+    }
+
+    function _findChild($code, $item_code)
+    {
+        $_treeInside = [];
+
+        // get balance of Supplied Material
+        $__suppliedMaterial = DB::connection('sqlsrv_wms')->table('WMS_SWPS_HIS')
+            ->where('SWPS_NITMCD', $item_code)
+            ->where('SWPS_REMARK', 'OK')
+            ->groupBy('SWPS_NUNQ')
+            ->select(
+                DB::raw('RTRIM(SWPS_NUNQ) TRACE_UNQ'),
+            );
+
+        $_suppliedMaterial = DB::connection('sqlsrv_wms')->table('WMS_SWMP_HIS')
+            ->where('SWMP_ITMCD', $item_code)
+            ->where('SWMP_REMARK', 'OK')
+            ->groupBy('SWMP_UNQ')
+            ->select(
+                DB::raw('RTRIM(SWMP_UNQ) TRACE_UNQ'),
+            );
+
+        $suppliedMaterial = DB::connection('sqlsrv_wms')->query()
+            ->fromSub($_suppliedMaterial, 'v1')
+            ->union($__suppliedMaterial);
+
+        $_data = DB::connection('sqlsrv_wms')->table('raw_material_labels')
+            ->leftJoinSub($suppliedMaterial, 'v2', 'TRACE_UNQ', '=', 'code')
+            ->where('parent_code', $code)
+            ->get(['code', 'parent_code', 'quantity', 'splitted', 'TRACE_UNQ']);
+        if (!$_data->isEmpty()) {
+            foreach ($_data as $r) {
+                
+                $status = '';
+                if (!$r->splitted) {
+                    $status = 'Status:NOT SPLITTED';
+                }
+                if ($r->TRACE_UNQ) {
+                    $status = 'Status:Scanned Tracebility ✔';
+                }
+                $this->historySplitLabel[] = [
+                    'code' => $r->code,
+                    'parent_code' => $r->parent_code,
+                    'status' => $status,
+                ];
+                $_treeInside[] = [
+                    'code' => $r->code,
+                    'parent_code' => $r->parent_code,
+                ];
+                $_treeInside[] = $this->_findChild($r->code, $item_code);
+            }
+        }
+        return $_treeInside;
     }
 }
