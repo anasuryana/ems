@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ConsignmentController;
 use App\Http\Controllers\ICTController;
 use App\Http\Controllers\LabelController;
 use App\Http\Controllers\ProductionController;
@@ -54,6 +55,7 @@ Route::prefix('ict')->group(function () {
 });
 Route::prefix('production')->group(function () {
     Route::get('supply-status', [ProductionController::class, 'supplyStatus']);
+    Route::post('supply-status-by-psn', [ProductionController::class, 'getSupplyStatusByPSN']);
     Route::get('active', [ProductionController::class, 'getActiveJob']);
     Route::post('output', [ProductionController::class, 'saveSensorOutput']);
     Route::get('active-tlws', [ProductionController::class, 'getActivatedTLWS']);
@@ -80,6 +82,11 @@ Route::prefix('engtrial')->group(function () {
     Route::get('qpit-model', [RatingController::class, 'getModel']);
 });
 
+Route::prefix('consignment')->group(function () {
+    Route::get('children', [ConsignmentController::class, 'getChildConsignments']);
+    Route::post('default-child', [ConsignmentController::class, 'setDefaultConsignment']);
+});
+
 Route::post('/welcome', function () {
     return 'login dulu';
 })->name('login');
@@ -90,4 +97,5 @@ Route::get('/welcome', function () {
 
 Route::prefix('label')->group(function () {
     Route::get('history-tree', [LabelController::class, 'splitTreeHistory']);
+    Route::get('history-tree-psn', [ProductionController::class, 'getTreeInside']);
 });
