@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ConsignmentController;
 use App\Http\Controllers\ICTController;
 use App\Http\Controllers\LabelController;
 use App\Http\Controllers\ProductionController;
@@ -79,6 +80,11 @@ Route::prefix('engtrial')->group(function () {
     Route::get('report1-to-spreadsheet', [RatingController::class, 'getPercentagePerLineMachinePeriodtoSpreadsheet']);
     Route::get('report2-to-spreadsheet', [RatingController::class, 'getPercentagePerLineMachinePeriodPSBOXtoSpreadsheet']);
     Route::get('qpit-model', [RatingController::class, 'getModel']);
+});
+
+Route::prefix('consignment')->group(function () {
+    Route::get('children', [ConsignmentController::class, 'getChildConsignments']);
+    Route::post('default-child', [ConsignmentController::class, 'setDefaultConsignment']);
 });
 
 Route::post('/welcome', function () {
