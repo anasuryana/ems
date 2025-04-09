@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ConsignmentController;
+use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\ICTController;
 use App\Http\Controllers\LabelController;
 use App\Http\Controllers\ProductionController;
@@ -60,6 +61,10 @@ Route::prefix('production')->group(function () {
     Route::post('output', [ProductionController::class, 'saveSensorOutput']);
     Route::get('active-tlws', [ProductionController::class, 'getActivatedTLWS']);
     Route::put('active-tlws', [ProductionController::class, 'setCompletionTLWS']);
+    Route::get('active-job-from-wo', [ProductionController::class, 'getActivedJobFromWO']);
+});
+Route::prefix('employee')->group(function () {
+    Route::get('name-from-nik', [EmployeeController::class, 'getByNik']);
 });
 
 Route::prefix('password')->group(function () {
