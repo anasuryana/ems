@@ -1082,4 +1082,20 @@ class ProductionController extends Controller
         }
         return $_treeInside;
     }
+
+    function getActivedJobFromWO(Request $request)
+    {
+        $data = DB::connection('sqlsrv_wms')->table('WMS_TLWS_TBL')
+            ->leftJoin('WMS_SWMP_HIS', 'TLWS_SPID', '=', 'SWMP_SPID')
+            ->leftJoin('WMS_CLS_JOB', 'TLWS_SPID', '=', 'CLS_SPID')
+            ->where('TLWS_STSFG', 'ACT')
+            ->where('TLWS_WONO',  $request->doc)
+            ->groupBy('TLWS_JOBNO', 'SWMP_CLS', 'CLS_QTY')
+            ->get([
+                DB::raw("RTRIM(TLWS_JOBNO) TLWS_JOBNO"),
+                DB::raw("ISNULL(SWMP_CLS,0) SWMP_CLS"),
+                DB::raw("ISNULL(CLS_QTY,0) CLS_QTY"),
+            ]);
+        return ['data' => $data];
+    }
 }
