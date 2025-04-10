@@ -1088,14 +1088,46 @@ class ProductionController extends Controller
         $data = DB::connection('sqlsrv_wms')->table('WMS_TLWS_TBL')
             ->leftJoin('WMS_SWMP_HIS', 'TLWS_SPID', '=', 'SWMP_SPID')
             ->leftJoin('WMS_CLS_JOB', 'TLWS_SPID', '=', 'CLS_SPID')
+            ->leftJoin('XWO', 'TLWS_JOBNO', '=', 'PDPP_WONO')
             ->where('TLWS_STSFG', 'ACT')
             ->where('TLWS_WONO',  $request->doc)
-            ->groupBy('TLWS_JOBNO', 'SWMP_CLS', 'CLS_QTY')
+            ->groupBy('TLWS_JOBNO', 'SWMP_CLS', 'CLS_QTY', 'TLWS_SPID')
             ->get([
+                'TLWS_SPID',
                 DB::raw("RTRIM(TLWS_JOBNO) TLWS_JOBNO"),
                 DB::raw("ISNULL(SWMP_CLS,0) SWMP_CLS"),
                 DB::raw("ISNULL(CLS_QTY,0) CLS_QTY"),
+                DB::raw("MAX(PDPP_WORQT) WOR_QTY"),
             ]);
         return ['data' => $data];
+    }
+
+    function adjustQtyCrossAndCompletion(Request $request)
+    {
+        $isCrossQtyChanged = ($request->cross_qty != $request->cross_qty_before);
+        $isCompletionQtyChanged = ($request->completion_qty != $request->completion_qty_before);
+        if ($isCrossQtyChanged || $isCompletionQtyChanged) {
+            $affectedRows = 0;
+            if ($isCrossQtyChanged) {
+                $affectedRows += DB::connection('sqlsrv_wms')->table('WMS_SWMP_HIS')
+                    ->where('SWMP_SPID', $request->spid)
+                    ->where('SWMP_REMARK', 'OK')
+                    ->update(['SWMP_CLS' => $request->cross_qty]);
+                logger('update cross qty by ' . $request->nik .  ', from ' . $request->cross_qty_before . ' to ' . $request->cross_qty);
+            }
+            if ($isCompletionQtyChanged) {
+                $affectedRows += DB::connection('sqlsrv_wms')->table('WMS_CLS_JOB')
+                    ->where('CLS_SPID', $request->spid)
+                    ->update([
+                        'CLS_QTY' => $request->completion_qty,
+                        'CLS_LUPDT' => date('Y-m-d H:i:s'),
+                        'CLS_LUPBY' => $request->nik
+                    ]);
+                logger('update completion qty by ' . $request->nik .  ', from ' . $request->completion_qty_before . ' to ' . $request->completion_qty);
+            }
+            return ['message' => $affectedRows ? 'Updated successfully' : 'Nothing updated'];
+        } else {
+            return ['message' => 'Nothing updated.'];
+        }
     }
 }
