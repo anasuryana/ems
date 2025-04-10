@@ -62,6 +62,7 @@ Route::prefix('production')->group(function () {
     Route::get('active-tlws', [ProductionController::class, 'getActivatedTLWS']);
     Route::put('active-tlws', [ProductionController::class, 'setCompletionTLWS']);
     Route::get('active-job-from-wo', [ProductionController::class, 'getActivedJobFromWO']);
+    Route::put('adjust-qty', [ProductionController::class, 'adjustQtyCrossAndCompletion']);
 });
 Route::prefix('employee')->group(function () {
     Route::get('name-from-nik', [EmployeeController::class, 'getByNik']);
