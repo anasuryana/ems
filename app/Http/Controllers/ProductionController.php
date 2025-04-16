@@ -954,6 +954,7 @@ class ProductionController extends Controller
             ->table('raw_material_labels')
             ->leftJoin('SPLSCN_TBL', 'SPLSCN_TBL.SPLSCN_UNQCODE', '=', 'raw_material_labels.code')
             ->where('SPLSCN_TBL.SPLSCN_DOC', $data['doc'])
+            ->whereNull('splitted')
             ->whereNotIn('code', $scannedLabelID)
             ->where('raw_material_labels.item_code', $data['partCode'])
             ->get([
