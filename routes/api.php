@@ -3,6 +3,7 @@
 use App\Http\Controllers\ConsignmentController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\ICTController;
+use App\Http\Controllers\ItemController;
 use App\Http\Controllers\LabelController;
 use App\Http\Controllers\ProductionController;
 use App\Http\Controllers\QPITController;
@@ -91,6 +92,9 @@ Route::prefix('engtrial')->group(function () {
 Route::prefix('consignment')->group(function () {
     Route::get('children', [ConsignmentController::class, 'getChildConsignments']);
     Route::post('default-child', [ConsignmentController::class, 'setDefaultConsignment']);
+});
+Route::prefix('item')->group(function () {
+    Route::get('process', [ItemController::class, 'getProcess']);
 });
 
 Route::post('/welcome', function () {
