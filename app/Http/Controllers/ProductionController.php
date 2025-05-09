@@ -950,9 +950,48 @@ class ProductionController extends Controller
             ]);
 
         //  not splitted && not scanned
+
+        // this variable handle on-progres scanning (not closed yet)
+        $suppliedMaterial1 = DB::connection('sqlsrv_wms')->table('WMS_SWPS_HIS')
+            ->whereIn('SWPS_PSNNO', [$data['doc']])
+            ->where('SWPS_REMARK', 'OK')
+            ->where('SWPS_NITMCD', $data['partCode'])
+            ->whereNotIn('SWPS_NUNQ', $scannedLabelID)
+            ->groupBy('SWPS_NITMCD', 'NQTY', 'SWPS_NUNQ', 'SWPS_NLOTNO')
+            ->select(
+                DB::raw('RTRIM(SWPS_NITMCD) ITMCD'),
+                DB::raw('NQTY QTY'),
+                DB::raw('RTRIM(SWPS_NLOTNO) LOTNO'),
+                DB::raw('RTRIM(SWPS_NUNQ) UNQX'),
+                DB::raw('NQTY BAKQTY'),
+                DB::raw('MIN(SWPS_LUPDT) LUPDT'),
+                DB::raw('MIN(SWPS_LINENO) MINLINE'),
+            );
+        // this variable handle on-progres scanning (not closed yet)
+        $suppliedMaterial2 = DB::connection('sqlsrv_wms')->table('WMS_SWMP_HIS')
+            ->whereIn('SWMP_PSNNO', [$data['doc']])
+            ->where('SWMP_REMARK', 'OK')
+            ->where('SWMP_ITMCD', $data['partCode'])
+            ->whereNotIn('SWMP_UNQ', $scannedLabelID)
+            ->groupBy('SWMP_ITMCD', 'SWMP_QTY', 'SWMP_UNQ', 'SWMP_LOTNO')
+            ->select(
+                DB::raw('RTRIM(SWMP_ITMCD) ITMCD'),
+                DB::raw('SWMP_QTY QTY'),
+                DB::raw('RTRIM(SWMP_LOTNO) LOTNO'),
+                DB::raw('RTRIM(SWMP_UNQ) UNQX'),
+                DB::raw('SWMP_QTY BAKQTY'),
+                DB::raw('MIN(SWMP_LUPDT) LUPDT'),
+                DB::raw('MIN(SWMP_LINENO) MINLINE'),
+            );
+
+        $labelRelatedJOB = DB::connection('sqlsrv_wms')->query()
+            ->fromSub($suppliedMaterial1, 'v1')
+            ->union($suppliedMaterial2);
+
         $neccessaryCodeFreshO = DB::connection('sqlsrv_wms')
             ->table('raw_material_labels')
             ->leftJoin('SPLSCN_TBL', 'SPLSCN_TBL.SPLSCN_UNQCODE', '=', 'raw_material_labels.code')
+            ->leftJoinSub($labelRelatedJOB, 'vx', 'UNQX', '=', 'code')
             ->where('SPLSCN_TBL.SPLSCN_DOC', $data['doc'])
             ->whereNull('splitted')
             ->whereNotIn('code', $scannedLabelID)
@@ -961,11 +1000,12 @@ class ProductionController extends Controller
                 DB::raw('item_code ITMCD'),
                 DB::raw('quantity QTY'),
                 DB::raw('code UNQ'),
-                DB::raw("'' LINE"),
+                DB::raw("ISNULL(MINLINE,'') LINE"),
                 DB::raw("NULL CLS_LUPDT"),
                 DB::raw("NULL CALCULATE_USE"),
                 DB::raw("NULL BALANCE_LABEL"),
                 DB::raw("NULL RESULT"),
+                DB::raw("UNQX"),
             ]);
         $message = '';
 
@@ -983,7 +1023,7 @@ class ProductionController extends Controller
             'data' => $scannedLabelDetails,
             'dataReff' => $neccessaryCodeO,
             'message' => $message,
-            'dataFreshReff' => $neccessaryCodeFreshO
+            'dataFreshReff' => $neccessaryCodeFreshO,
         ];
     }
 
