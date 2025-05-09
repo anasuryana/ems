@@ -28,7 +28,7 @@ class ProductionController extends Controller
         $isAlreadyCalculated  = false;
 
         $JobData = DB::connection('sqlsrv_wms')->table('WMS_SWMP_HIS')
-            ->where('SWMP_JOBNO', $job)
+            ->where('SWMP_JOBNO', 'like',  $job . '%')
             ->where('SWMP_REMARK', 'OK')
             ->groupBy('SWMP_JOBNO', 'SWMP_BOMRV')
             ->first([DB::raw('RTRIM(SWMP_JOBNO) SWMP_JOBNO'), 'SWMP_BOMRV']);
