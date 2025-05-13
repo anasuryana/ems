@@ -174,7 +174,7 @@ class ProductionController extends Controller
                 $_query =  DB::connection('sqlsrv_wms')->table('WMS_CLS_JOB')
                     ->leftJoin('XWO', 'CLS_JOBNO', '=', 'PDPP_WONO')
                     ->whereIn('CLS_JOBNO', $uniqueJobList)
-                    ->groupBy('CLS_JOBNO', 'CLS_PROCD', 'CLS_MDLCD', 'PDPP_BOMRV')
+                    ->groupBy('CLS_JOBNO', 'CLS_PROCD', 'PDPP_BOMRV')
                     ->orderBy(DB::raw('MIN(CLS_LUPDT)'));
                 if ($processContext) {
                     $_query->where('CLS_PROCD', $processContext->PPSN1_PROCD);
@@ -182,7 +182,7 @@ class ProductionController extends Controller
                 $JobOutput = $_query->get([
                     DB::raw('UPPER(CLS_JOBNO) CLS_JOBNO'),
                     DB::raw("RTRIM(CLS_PROCD) CLS_PROCD"),
-                    DB::raw("RTRIM(CLS_MDLCD) CLS_MDLCD"),
+                    DB::raw("RTRIM(MAX(CLS_MDLCD)) CLS_MDLCD"),
                     DB::raw("PDPP_BOMRV CLS_BOMRV"),
                     DB::raw("SUM(CLS_QTY) CLSQTY"),
                     DB::raw("MAX(CLS_PSNNO) CLS_PSNNO")
