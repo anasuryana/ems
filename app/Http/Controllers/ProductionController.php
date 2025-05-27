@@ -897,8 +897,8 @@ class ProductionController extends Controller
                                     'ITMCD' => $lm->ITMCD,
                                     'QTY' => $l->QTY,
                                     'UNQ' => $lm->UNQ,
-                                    'LINE' => $h->LINEPROD,
-                                    'CLS_LUPDT' => $h->LUPDT,
+                                    'LINE' => '',
+                                    'CLS_LUPDT' => '',
                                     'CALCULATE_USE' => $_qtyContextUseLabel,
                                     'BALANCE_LABEL' => $lm->QTY,
                                     'RESULT' => '',
@@ -1000,14 +1000,61 @@ class ProductionController extends Controller
                 DB::raw('item_code ITMCD'),
                 DB::raw('quantity QTY'),
                 DB::raw('code UNQ'),
-                DB::raw("ISNULL(MINLINE,'') LINE"),
+                DB::raw("'' LINE"),
                 DB::raw("NULL CLS_LUPDT"),
                 DB::raw("NULL CALCULATE_USE"),
                 DB::raw("NULL BALANCE_LABEL"),
                 DB::raw("NULL RESULT"),
                 DB::raw("UNQX"),
             ]);
+
+        $scannedLabelID = array_merge($scannedLabelID, $neccessaryCodeFreshO->unique('UNQ')->pluck('UNQ')->toArray());
+
+        // for get line information
+        $suppliedMaterial1 = DB::connection('sqlsrv_wms')->table('WMS_SWPS_HIS')
+            ->whereIn('SWPS_PSNNO', [$data['doc']])
+            ->where('SWPS_REMARK', 'OK')
+            ->where('SWPS_NITMCD', $data['partCode'])
+            ->whereIn('SWPS_NUNQ', $scannedLabelID)
+            ->groupBy('SWPS_NUNQ', 'SWPS_LINENO', 'SWPS_LUPDT')
+            ->select(
+                DB::raw('RTRIM(SWPS_NUNQ) UNQX'),
+                DB::raw('SWPS_LUPDT LUPDT'),
+                DB::raw('SWPS_LINENO MINLINE'),
+            );
+
+        // this variable handle on-progres scanning (not closed yet)
+        $suppliedMaterial2 = DB::connection('sqlsrv_wms')->table('WMS_SWMP_HIS')
+            ->whereIn('SWMP_PSNNO', [$data['doc']])
+            ->where('SWMP_REMARK', 'OK')
+            ->where('SWMP_ITMCD', $data['partCode'])
+            ->whereIn('SWMP_UNQ', $scannedLabelID)
+            ->groupBy('SWMP_UNQ', 'SWMP_LINENO', 'SWMP_LUPDT')
+            ->select(
+                DB::raw('RTRIM(SWMP_UNQ) UNQX'),
+                DB::raw('SWMP_LUPDT LUPDT'),
+                DB::raw('SWMP_LINENO MINLINE'),
+            );
+
+        $labelRelatedJOB = DB::connection('sqlsrv_wms')->query()
+            ->fromSub($suppliedMaterial1, 'v1')
+            ->union($suppliedMaterial2)
+            ->orderBy('LUPDT')
+            ->get();
+
+        foreach ($scannedLabelDetails as &$d) {
+            foreach ($labelRelatedJOB as $l) {
+                if ($d['UNQ'] == $l->UNQX) {
+                    $d['LINE'] .=  $l->MINLINE . ',';
+                    $d['CLS_LUPDT'] .=  $l->LUPDT . ',';
+                }
+            }
+        }
+        unset($d);
+        // end for
+
         $message = '';
+
 
         foreach ($anotherRequirement as $r) {
             $balance = $r->REQQT - $r->FILLQT;
