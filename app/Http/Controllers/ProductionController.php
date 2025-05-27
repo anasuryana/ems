@@ -821,10 +821,29 @@ class ProductionController extends Controller
             if (empty($_MDLCD)) {
                 continue;
             }
+            $_jobRun1 = DB::connection('sqlsrv_wms')->table('WMS_SWPS_HIS')
+                ->where('SWPS_JOBNO', $r['job'])
+                ->groupBy('SWPS_MDLCD')
+                ->select(DB::raw('SWPS_MDLCD MDLCD'), DB::raw("MIN(SWPS_LUPDT) LUPDTR"));
+
+            $_jobRun2 = DB::connection('sqlsrv_wms')->table('WMS_SWMP_HIS')
+                ->where('SWMP_JOBNO', $r['job'])
+                ->groupBy('SWMP_MDLCD')
+                ->select(DB::raw('SWMP_MDLCD MDLCD'), DB::raw("MIN(SWMP_LUPDT) LUPDTR"));
+
+            $_jobRun =  DB::connection('sqlsrv_wms')->query()
+                ->fromSub($_jobRun1, 'v1')
+                ->union($_jobRun2, 'v2');
+
+            $_jobRunFinal = DB::connection('sqlsrv_wms')->query()
+                ->fromSub($_jobRun, 'vv1')
+                ->groupBy('MDLCD')
+                ->select('MDLCD', DB::raw("MIN(LUPDTR) LUPDTR"));
+
             $_requirement = DB::connection('sqlsrv_wms')->table('VCIMS_MBOM_TBL')
+                ->leftJoinSub($_jobRunFinal, 'vv1', 'MBOM_MDLCD', '=', 'MDLCD')
                 ->where('MBOM_MDLCD', $_MDLCD)
                 ->where('MBOM_BOMRV', $_BOMRV)
-
                 ->where('MBOM_ITMCD', $data['partCode'])
                 ->groupBy('MBOM_ITMCD', 'MBOM_SPART', 'MBOM_PROCD')
                 ->get([
@@ -836,12 +855,14 @@ class ProductionController extends Controller
                     DB::raw('RTRIM(MBOM_PROCD) MBOM_PROCD'),
                     DB::raw('SUM(MBOM_QTY) PER'),
                     DB::raw('SUM(MBOM_QTY)*' . (int)$r['qty'] . ' REQQT'),
-                    DB::raw('0 FILLQT')
+                    DB::raw('0 FILLQT'),
+                    DB::raw('MIN(LUPDTR) LUPDTR')
                 ]);
             $anotherRequirement = $anotherRequirement->merge($_requirement);
         }
 
-        // calculate
+        $anotherRequirement = $anotherRequirement->sortBy('LUPDTR');
+        // calculateprocesS
         foreach ($anotherRequirement as $h) {
             $__suppliedMaterial = DB::connection('sqlsrv_wms')->table('WMS_SWPS_HIS')
                 ->whereIn('SWPS_PSNNO', [$data['doc']])
