@@ -786,6 +786,7 @@ class ProductionController extends Controller
 
         $historyClosingJob = DB::connection('sqlsrv_wms')->table('WMS_CLS_JOB')
             ->whereIn('CLS_JOBNO', $uniqueJobInput)
+            ->orderBy('CLS_LUPDT')
             ->get(['CLS_SPID', 'CLS_MDLCD', 'CLS_BOMRV', 'CLS_JOBNO', 'CLS_QTY', 'CLS_LUPDT', 'CLS_LINENO', DB::raw("0 CLS_QTY_PLOT")]);
         $xwo = DB::connection('sqlsrv_wms')->table('XWO')
             ->whereIn('PDPP_WONO', $uniqueJobInput)
@@ -800,12 +801,20 @@ class ProductionController extends Controller
         $anotherRequirement = new Collection();
         foreach ($data['detail'] as $r) {
             $_MDLCD = $_BOMRV =  $_LUPDT = $_LINE = '';
+            $_countClosingRowPerJob = 0;
+            $_totalClosingQtyPerJob = [];
+            $_LUPDT_CLOSING_ = [];
+            $_LUPDT_CLOSING = '';
             foreach ($historyClosingJob as $h) {
                 if ($r['job'] == $h->CLS_JOBNO) {
                     $_MDLCD = $h->CLS_MDLCD;
                     $_BOMRV = $h->CLS_BOMRV;
                     $_LUPDT .= $h->CLS_LUPDT . ',';
                     $_LINE .= $h->CLS_LINENO . ',';
+                    $_totalClosingQtyPerJob[] = $h->CLS_QTY;
+                    $_countClosingRowPerJob++;
+                    $_LUPDT_CLOSING = $h->CLS_LUPDT;
+                    $_LUPDT_CLOSING_[] = $h->CLS_LUPDT;
                 }
             }
             if (empty($_MDLCD)) {
@@ -821,44 +830,48 @@ class ProductionController extends Controller
             if (empty($_MDLCD)) {
                 continue;
             }
-            $_jobRun1 = DB::connection('sqlsrv_wms')->table('WMS_SWPS_HIS')
-                ->where('SWPS_JOBNO', $r['job'])
-                ->groupBy('SWPS_MDLCD')
-                ->select(DB::raw('SWPS_MDLCD MDLCD'), DB::raw("MIN(SWPS_LUPDT) LUPDTR"));
 
-            $_jobRun2 = DB::connection('sqlsrv_wms')->table('WMS_SWMP_HIS')
-                ->where('SWMP_JOBNO', $r['job'])
-                ->groupBy('SWMP_MDLCD')
-                ->select(DB::raw('SWMP_MDLCD MDLCD'), DB::raw("MIN(SWMP_LUPDT) LUPDTR"));
-
-            $_jobRun =  DB::connection('sqlsrv_wms')->query()
-                ->fromSub($_jobRun1, 'v1')
-                ->union($_jobRun2, 'v2');
-
-            $_jobRunFinal = DB::connection('sqlsrv_wms')->query()
-                ->fromSub($_jobRun, 'vv1')
-                ->groupBy('MDLCD')
-                ->select('MDLCD', DB::raw("MIN(LUPDTR) LUPDTR"));
-
-            $_requirement = DB::connection('sqlsrv_wms')->table('VCIMS_MBOM_TBL')
-                ->leftJoinSub($_jobRunFinal, 'vv1', 'MBOM_MDLCD', '=', 'MDLCD')
-                ->where('MBOM_MDLCD', $_MDLCD)
-                ->where('MBOM_BOMRV', $_BOMRV)
-                ->where('MBOM_ITMCD', $data['partCode'])
-                ->groupBy('MBOM_ITMCD', 'MBOM_SPART', 'MBOM_PROCD')
-                ->get([
-                    DB::raw("'" . $r['job'] . "' FLAGJOBNO"),
-                    DB::raw("'" . $_LUPDT . "' LUPDT"),
-                    DB::raw("'" . $_LINE . "' LINEPROD"),
-                    DB::raw('RTRIM(MBOM_ITMCD) MBOM_ITMCD'),
-                    DB::raw('RTRIM(MBOM_SPART) MBOM_SPART'),
-                    DB::raw('RTRIM(MBOM_PROCD) MBOM_PROCD'),
-                    DB::raw('SUM(MBOM_QTY) PER'),
-                    DB::raw('SUM(MBOM_QTY)*' . (int)$r['qty'] . ' REQQT'),
-                    DB::raw('0 FILLQT'),
-                    DB::raw('MIN(LUPDTR) LUPDTR')
-                ]);
-            $anotherRequirement = $anotherRequirement->merge($_requirement);
+            if ($_countClosingRowPerJob) {
+                for ($_i = 0; $_i < $_countClosingRowPerJob; $_i++) {
+                    $_requirement = DB::connection('sqlsrv_wms')->table('VCIMS_MBOM_TBL')
+                        ->where('MBOM_MDLCD', $_MDLCD)
+                        ->where('MBOM_BOMRV', $_BOMRV)
+                        ->where('MBOM_ITMCD', $data['partCode'])
+                        ->groupBy('MBOM_ITMCD', 'MBOM_SPART', 'MBOM_PROCD')
+                        ->get([
+                            DB::raw("'" . $r['job'] . "' FLAGJOBNO"),
+                            DB::raw("'" . $_LUPDT . "' LUPDT"),
+                            DB::raw("'" . $_LINE . "' LINEPROD"),
+                            DB::raw('RTRIM(MBOM_ITMCD) MBOM_ITMCD'),
+                            DB::raw('RTRIM(MBOM_SPART) MBOM_SPART'),
+                            DB::raw('RTRIM(MBOM_PROCD) MBOM_PROCD'),
+                            DB::raw('SUM(MBOM_QTY) PER'),
+                            DB::raw('SUM(MBOM_QTY)*' . (int)$_totalClosingQtyPerJob[$_i] . ' REQQT'),
+                            DB::raw('0 FILLQT'),
+                            DB::raw("'" . $_LUPDT_CLOSING_[$_i] . "' LUPDTR")
+                        ]);
+                    $anotherRequirement = $anotherRequirement->merge($_requirement);
+                }
+            } else {
+                $_requirement = DB::connection('sqlsrv_wms')->table('VCIMS_MBOM_TBL')
+                    ->where('MBOM_MDLCD', $_MDLCD)
+                    ->where('MBOM_BOMRV', $_BOMRV)
+                    ->where('MBOM_ITMCD', $data['partCode'])
+                    ->groupBy('MBOM_ITMCD', 'MBOM_SPART', 'MBOM_PROCD')
+                    ->get([
+                        DB::raw("'" . $r['job'] . "' FLAGJOBNO"),
+                        DB::raw("'" . $_LUPDT . "' LUPDT"),
+                        DB::raw("'" . $_LINE . "' LINEPROD"),
+                        DB::raw('RTRIM(MBOM_ITMCD) MBOM_ITMCD'),
+                        DB::raw('RTRIM(MBOM_SPART) MBOM_SPART'),
+                        DB::raw('RTRIM(MBOM_PROCD) MBOM_PROCD'),
+                        DB::raw('SUM(MBOM_QTY) PER'),
+                        DB::raw('SUM(MBOM_QTY)*' . (int)$r['qty'] . ' REQQT'),
+                        DB::raw('0 FILLQT'),
+                        DB::raw("'" . $_LUPDT_CLOSING . "' LUPDTR")
+                    ]);
+                $anotherRequirement = $anotherRequirement->merge($_requirement);
+            }
         }
 
         $anotherRequirement = $anotherRequirement->sortBy('LUPDTR');
@@ -988,6 +1001,7 @@ class ProductionController extends Controller
                 DB::raw('MIN(SWPS_LUPDT) LUPDT'),
                 DB::raw('MIN(SWPS_LINENO) MINLINE'),
             );
+
         // this variable handle on-progres scanning (not closed yet)
         $suppliedMaterial2 = DB::connection('sqlsrv_wms')->table('WMS_SWMP_HIS')
             ->whereIn('SWMP_PSNNO', [$data['doc']])
@@ -1063,7 +1077,15 @@ class ProductionController extends Controller
             ->orderBy('LUPDT')
             ->get();
 
+        $completedLabel = [];
         foreach ($scannedLabelDetails as &$d) {
+            $d['IS_COMPLETED'] = '';
+
+            if ($d['BALANCE_LABEL'] == 0) {
+                if (!in_array($d['UNQ'], $completedLabel)) {
+                    $completedLabel[] = $d['UNQ'];
+                }
+            }
             foreach ($labelRelatedJOB as $l) {
                 if ($d['UNQ'] == $l->UNQX) {
                     $d['LINE'] .=  $l->MINLINE . ',';
@@ -1073,6 +1095,16 @@ class ProductionController extends Controller
         }
         unset($d);
         // end for
+
+        foreach ($scannedLabelDetails as &$d) {
+            foreach ($completedLabel as $n) {
+                if ($d['UNQ'] == $n) {
+                    $d['IS_COMPLETED'] = 1;
+                    break;
+                }
+            }
+        }
+        unset($d);
 
         $message = '';
 
