@@ -120,6 +120,7 @@ class ProductionController extends Controller
                 DB::raw('RTRIM(SWPS_NUNQ) UNQ'),
                 DB::raw('NQTY BAKQTY'),
                 DB::raw('SWPS_PSNNO PSNNO'),
+                DB::raw('MIN(SWPS_LUPDT) LUPDT'),
             );
 
         $_suppliedMaterial = DB::connection('sqlsrv_wms')->table('WMS_SWMP_HIS')
@@ -133,11 +134,23 @@ class ProductionController extends Controller
                 DB::raw('RTRIM(SWMP_UNQ) UNQ'),
                 DB::raw('SWMP_QTY BAKQTY'),
                 DB::raw('SWMP_PSNNO PSNNO'),
+                DB::raw('MIN(SWMP_LUPDT) LUPDT'),
             );
 
-        $suppliedMaterial = DB::connection('sqlsrv_wms')->query()
+
+        $xsuppliedMaterial = DB::connection('sqlsrv_wms')->query()
             ->fromSub($_suppliedMaterial, 'v1')
-            ->union($__suppliedMaterial)->get();
+            ->union($__suppliedMaterial)
+            ->groupBy('ITMCD', 'QTY', 'LOTNO', 'UNQ', 'BAKQTY', 'PSNNO')
+            ->select('ITMCD', 'QTY', 'LOTNO', 'UNQ', 'BAKQTY', 'PSNNO', DB::raw("MIN(LUPDT) LUPDT"));
+
+        $suppliedMaterial = DB::connection('sqlsrv_wms')->query()
+            ->fromSub($xsuppliedMaterial, 'v1')
+            ->groupBy('ITMCD', 'QTY', 'LOTNO', 'UNQ', 'BAKQTY', 'PSNNO')
+            ->select('ITMCD', 'QTY', 'LOTNO', 'UNQ', 'BAKQTY', 'PSNNO', DB::raw("MIN(LUPDT) LUPDT"))
+            ->orderBy(DB::raw("MIN(LUPDT)"))
+            ->get();
+
         Logger('Inisialisasi $suppliedMaterial');
         // // get unique key 
         $uniqueKeyList = $suppliedMaterial->pluck('UNQ')->toArray();
@@ -810,7 +823,7 @@ class ProductionController extends Controller
             $_countClosingRowPerJob = 0;
             $_totalClosingQtyPerJob = [];
             $_LUPDT_CLOSING_ = [];
-            $_LUPDT_CLOSING = '';
+            $_LUPDT_CLOSING = date('Y-m-d H:i:s');
             foreach ($historyClosingJob as $h) {
                 if ($r['job'] == $h->CLS_JOBNO) {
                     $_MDLCD = $h->CLS_MDLCD;
