@@ -771,6 +771,10 @@ class ProductionController extends Controller
         $scannedLabels = DB::connection('sqlsrv_wms')->query()
             ->fromSub($_suppliedMaterial, 'v1')
             ->union($__suppliedMaterial)->get();
+
+        $TLWS = DB::connection('sqlsrv_wms')->table('WMS_TLWS_TBL')->where('TLWS_PSNNO', $data['doc'])
+            ->first('TLWS_PROCD');
+
         $scannedLabelDetails = $scannedLabelID = [];
         //supplied but not scanned
 
@@ -786,8 +790,10 @@ class ProductionController extends Controller
 
         $historyClosingJob = DB::connection('sqlsrv_wms')->table('WMS_CLS_JOB')
             ->whereIn('CLS_JOBNO', $uniqueJobInput)
+            ->where('CLS_PROCD', $TLWS->TLWS_PROCD)
             ->orderBy('CLS_LUPDT')
             ->get(['CLS_SPID', 'CLS_MDLCD', 'CLS_BOMRV', 'CLS_JOBNO', 'CLS_QTY', 'CLS_LUPDT', 'CLS_LINENO', DB::raw("0 CLS_QTY_PLOT")]);
+
         $xwo = DB::connection('sqlsrv_wms')->table('XWO')
             ->whereIn('PDPP_WONO', $uniqueJobInput)
             ->get([
@@ -875,6 +881,7 @@ class ProductionController extends Controller
         }
 
         $anotherRequirement = $anotherRequirement->sortBy('LUPDTR');
+
         // calculateprocesS
         foreach ($anotherRequirement as $h) {
             $__suppliedMaterial = DB::connection('sqlsrv_wms')->table('WMS_SWPS_HIS')
