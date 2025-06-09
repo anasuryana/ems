@@ -785,10 +785,13 @@ class ProductionController extends Controller
             ->fromSub($_suppliedMaterial, 'v1')
             ->union($__suppliedMaterial)->get();
 
-        $TLWS = DB::connection('sqlsrv_wms')->table('WMS_TLWS_TBL')->where('TLWS_PSNNO', $data['doc'])
-            ->first('TLWS_PROCD');
+        $scannedLabelDetails = $scannedLabelID = $processRequest = [];
 
-        $scannedLabelDetails = $scannedLabelID = [];
+        foreach ($data['detail'] as $r) {
+            if (!in_array($r['process'], $processRequest)) {
+                $processRequest[] = $r['process'];
+            }
+        }
         //supplied but not scanned
 
         // alternative part
@@ -803,9 +806,9 @@ class ProductionController extends Controller
 
         $historyClosingJob = DB::connection('sqlsrv_wms')->table('WMS_CLS_JOB')
             ->whereIn('CLS_JOBNO', $uniqueJobInput)
-            ->where('CLS_PROCD', $TLWS->TLWS_PROCD)
+            ->whereIn('CLS_PROCD', $processRequest)
             ->orderBy('CLS_LUPDT')
-            ->get(['CLS_SPID', 'CLS_MDLCD', 'CLS_BOMRV', 'CLS_JOBNO', 'CLS_QTY', 'CLS_LUPDT', 'CLS_LINENO', DB::raw("0 CLS_QTY_PLOT")]);
+            ->get(['CLS_SPID', 'CLS_MDLCD', 'CLS_BOMRV', 'CLS_JOBNO', 'CLS_QTY', 'CLS_LUPDT', 'CLS_LINENO', DB::raw("0 CLS_QTY_PLOT"), 'CLS_PROCD']);
 
         $xwo = DB::connection('sqlsrv_wms')->table('XWO')
             ->whereIn('PDPP_WONO', $uniqueJobInput)
@@ -825,7 +828,7 @@ class ProductionController extends Controller
             $_LUPDT_CLOSING_ = [];
             $_LUPDT_CLOSING = date('Y-m-d H:i:s');
             foreach ($historyClosingJob as $h) {
-                if ($r['job'] == $h->CLS_JOBNO) {
+                if ($r['job'] == $h->CLS_JOBNO && $r['process'] == $h->CLS_PROCD) {
                     $_MDLCD = $h->CLS_MDLCD;
                     $_BOMRV = $h->CLS_BOMRV;
                     $_LUPDT .= $h->CLS_LUPDT . ',';
@@ -850,7 +853,7 @@ class ProductionController extends Controller
                 continue;
             }
 
-            if ($_countClosingRowPerJob) {
+            if ($_countClosingRowPerJob > 1) {
                 for ($_i = 0; $_i < $_countClosingRowPerJob; $_i++) {
                     $_requirement = DB::connection('sqlsrv_wms')->table('VCIMS_MBOM_TBL')
                         ->where('MBOM_MDLCD', $_MDLCD)
@@ -1143,7 +1146,7 @@ class ProductionController extends Controller
             'data' => $scannedLabelDetails,
             'dataReff' => $neccessaryCodeO,
             'message' => $message,
-            'dataFreshReff' => $neccessaryCodeFreshO,
+            'dataFreshReff' => $neccessaryCodeFreshO
         ];
     }
 
