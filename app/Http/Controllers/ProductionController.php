@@ -733,32 +733,8 @@ class ProductionController extends Controller
         ];
     }
 
-    function getSupplyStatusByPSN(Request $request)
+    function getSupplyStatusByPSNData($data)
     {
-        //validator
-        $validator = Validator::make(
-            $request->json()->all(),
-            [
-                'doc' => 'required',
-                'partCode' => 'required',
-                'detail' => 'required|array',
-                'detail.*.job' => 'required',
-            ],
-            [
-                'doc.required' => ':attribute is required',
-                'partCode.required' => ':attribute is required',
-                'detail.required' => ':attribute is required',
-                'detail.array' => ':attribute should be array',
-                'detail.*.job.required' => ':attribute is required',
-            ]
-        );
-
-        if ($validator->fails()) {
-            return response()->json($validator->errors()->all(), 406);
-        }
-
-        $data = $request->json()->all();
-
         //supplied & scanned item
         // get balance of Supplied Material
         $__suppliedMaterial = DB::connection('sqlsrv_wms')->table('WMS_SWPS_HIS')
@@ -1158,6 +1134,118 @@ class ProductionController extends Controller
             'message' => $message,
             'dataFreshReff' => $neccessaryCodeFreshO
         ];
+    }
+
+    function getSupplyStatusByPSN(Request $request)
+    {
+        //validator
+        $validator = Validator::make(
+            $request->json()->all(),
+            [
+                'doc' => 'required',
+                'partCode' => 'required',
+                'detail' => 'required|array',
+                'detail.*.job' => 'required',
+            ],
+            [
+                'doc.required' => ':attribute is required',
+                'partCode.required' => ':attribute is required',
+                'detail.required' => ':attribute is required',
+                'detail.array' => ':attribute should be array',
+                'detail.*.job.required' => ':attribute is required',
+            ]
+        );
+
+        if ($validator->fails()) {
+            return response()->json($validator->errors()->all(), 406);
+        }
+
+        $data = $request->json()->all();
+
+        $respon = $this->getSupplyStatusByPSNData($data);
+
+        return $respon;
+    }
+
+    function getSupplyStatusByUniqueKey(Request $request)
+    {
+
+        $__suppliedMaterial = DB::connection('sqlsrv_wms')->table('WMS_SWPS_HIS')
+            ->where('SWPS_NUNQ', $request->uc)
+            ->where('SWPS_REMARK', 'OK')
+            ->groupBy('SWPS_NITMCD', 'NQTY', 'SWPS_NUNQ', 'SWPS_NLOTNO')
+            ->select(
+                DB::raw('RTRIM(SWPS_NITMCD) ITMCD'),
+                DB::raw('NQTY QTY'),
+                DB::raw('RTRIM(SWPS_NLOTNO) LOTNO'),
+                DB::raw('RTRIM(SWPS_NUNQ) UNQ'),
+                DB::raw('NQTY BAKQTY'),
+            );
+
+        $_suppliedMaterial = DB::connection('sqlsrv_wms')->table('WMS_SWMP_HIS')
+            ->where('SWMP_UNQ',  $request->uc)
+            ->where('SWMP_REMARK', 'OK')
+            ->groupBy('SWMP_ITMCD', 'SWMP_QTY', 'SWMP_UNQ', 'SWMP_LOTNO')
+            ->select(
+                DB::raw('RTRIM(SWMP_ITMCD) ITMCD'),
+                DB::raw('SWMP_QTY QTY'),
+                DB::raw('RTRIM(SWMP_LOTNO) LOTNO'),
+                DB::raw('RTRIM(SWMP_UNQ) UNQ'),
+                DB::raw('SWMP_QTY BAKQTY'),
+            );
+
+        $scannedLabels = DB::connection('sqlsrv_wms')->query()
+            ->fromSub($_suppliedMaterial, 'v1')
+            ->union($__suppliedMaterial)->get();
+
+        if ($scannedLabels->where('UNQ', $request->uc)->count() == 0) {
+            $masterLabel = DB::connection('sqlsrv_wms')->table('raw_material_labels')->where('code', $request->uc)->first();
+            return [
+                'data' => [
+                    'partCode' => $masterLabel->item_code ?? '',
+                    'qtyLabel' => (int)($masterLabel->quantity ?? 0),
+                    'qtyBalance' => (int)($masterLabel->quantity ?? 0)
+                ]
+            ];
+        } else {
+            $CLSJob = DB::connection('sqlsrv_wms')->table('WMS_CLS_JOB')
+                ->where('CLS_PSNNO', $request->doc)
+                ->where('CLS_PROCD', $request->process)
+                ->groupBy('CLS_JOBNO', 'CLS_PROCD')
+                ->select(DB::raw('RTRIM(CLS_JOBNO) CLS_JOBNO'), DB::raw('RTRIM(CLS_PROCD) CLS_PROCD'), DB::raw("SUM(CLS_QTY) CLS_QTY"))
+                ->get();
+
+            $dataDetail = [];
+            foreach ($CLSJob as $r) {
+                $dataDetail[] = [
+                    'process' => $r->CLS_PROCD,
+                    'job' => $r->CLS_JOBNO,
+                    'qty' => $r->CLS_QTY
+                ];
+            }
+
+            $data = [
+                'doc' => $request->doc,
+                'partCode' => $scannedLabels->first()->ITMCD,
+                'detail' => $dataDetail
+            ];
+
+            $respon = $this->getSupplyStatusByPSNData($data);
+
+            $lastRow = NULL;
+            foreach ($respon['data'] as $r) {
+                if ($r['UNQ'] == $request->uc) {
+                    $lastRow = $r;
+                }
+            }
+            return [
+                'data' => [
+                    'partCode' => $scannedLabels->first()->ITMCD,
+                    'qtyLabel' => (int)$lastRow['QTY'] ?? 0,
+                    'qtyBalance' => (int)$lastRow['BALANCE_LABEL'] ?? 0
+                ]
+            ];
+        }
     }
 
     function getTreeInside(Request $request)
