@@ -89,6 +89,12 @@ class ProductionController extends Controller
         $XWO = DB::connection('sqlsrv_wms')->table('XWO')->where('PDPP_WONO', $JobData->SWMP_JOBNO)
             ->first();
 
+        if ($XWO->PDPP_WORQT < $request->qty) {
+            return [
+                'status' => ['code' => false, 'message' => 'could not greater than lot size', 'job' => $JobData->SWMP_JOBNO],
+                'data' => [],
+            ];
+        }
         Logger('Inisialisasi $XWO');
 
         // get requirement

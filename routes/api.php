@@ -8,6 +8,7 @@ use App\Http\Controllers\LabelController;
 use App\Http\Controllers\ProductionController;
 use App\Http\Controllers\QPITController;
 use App\Http\Controllers\RatingController;
+use App\Http\Controllers\ReceivePackingListController;
 use App\Http\Controllers\RepairDataController;
 use App\Http\Controllers\UserController;
 use Illuminate\Http\Request;
@@ -95,6 +96,10 @@ Route::prefix('consignment')->group(function () {
 });
 Route::prefix('item')->group(function () {
     Route::get('process', [ItemController::class, 'getProcess']);
+});
+
+Route::prefix('receiving')->group(function () {
+    Route::post('upload-pl', [ReceivePackingListController::class, 'uploadSpreadsheet']);
 });
 
 Route::post('/welcome', function () {
