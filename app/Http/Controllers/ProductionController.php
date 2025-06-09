@@ -854,11 +854,13 @@ class ProductionController extends Controller
             }
 
             if ($_countClosingRowPerJob > 1) {
+
                 for ($_i = 0; $_i < $_countClosingRowPerJob; $_i++) {
                     $_requirement = DB::connection('sqlsrv_wms')->table('VCIMS_MBOM_TBL')
                         ->where('MBOM_MDLCD', $_MDLCD)
                         ->where('MBOM_BOMRV', $_BOMRV)
                         ->where('MBOM_ITMCD', $data['partCode'])
+                        ->whereIn('MBOM_PROCD', $processRequest)
                         ->groupBy('MBOM_ITMCD', 'MBOM_SPART', 'MBOM_PROCD')
                         ->get([
                             DB::raw("'" . $r['job'] . "' FLAGJOBNO"),
@@ -875,10 +877,12 @@ class ProductionController extends Controller
                     $anotherRequirement = $anotherRequirement->merge($_requirement);
                 }
             } else {
+
                 $_requirement = DB::connection('sqlsrv_wms')->table('VCIMS_MBOM_TBL')
                     ->where('MBOM_MDLCD', $_MDLCD)
                     ->where('MBOM_BOMRV', $_BOMRV)
                     ->where('MBOM_ITMCD', $data['partCode'])
+                    ->whereIn('MBOM_PROCD', $processRequest)
                     ->groupBy('MBOM_ITMCD', 'MBOM_SPART', 'MBOM_PROCD')
                     ->get([
                         DB::raw("'" . $r['job'] . "' FLAGJOBNO"),
