@@ -67,11 +67,30 @@ class ProductionController extends Controller
             }
         }
 
+        $processContextHelper = [];
+
+        if ($request->processCode) {
+            $processContextHelper[] = ['PPSN1_PROCD', '=', $request->processCode];
+        } else {
+            $processMaster = DB::connection('sqlsrv_wms')->table('process_masters')
+                ->whereNull('deleted_at')
+                ->where('assy_code', $request->itemCode)
+                ->where('line_code', str_replace('SMT-', '', $request->lineCode))
+                ->first();
+
+            if ($processMaster->line_category ?? '' == 'HW') {
+                $processContextHelper[] = ['PPSN1_PROCD', '=', 'SMT-HW'];
+            } else {
+                $processContextHelper[] = ['PPSN1_LINENO', '=', $request->lineCode];
+            }
+        }
+
         // get process context
         $processContext = DB::connection('sqlsrv_wms')->table('XPPSN1')
             ->where('PPSN1_WONO', $JobData->SWMP_JOBNO)
-            ->where('PPSN1_LINENO', $request->lineCode)
+            ->where($processContextHelper)
             ->first([DB::raw("RTRIM(PPSN1_PROCD) PPSN1_PROCD")]);
+
         if (!$processContext) {
             $processContext = DB::connection('sqlsrv_wms')->table('XPPSN1')
                 ->where('PPSN1_WONO', $JobData->SWMP_JOBNO)
