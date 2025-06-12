@@ -809,15 +809,14 @@ class ProductionController extends Controller
             ->whereIn('CLS_JOBNO', $uniqueJobInput)
             ->whereIn('CLS_PROCD', $processRequest)
             ->orderBy('CLS_LUPDT')
-            ->get(['CLS_SPID', 'CLS_MDLCD', 'CLS_BOMRV', 'CLS_JOBNO', 'CLS_QTY', 'CLS_LUPDT', 'CLS_LINENO', DB::raw("0 CLS_QTY_PLOT"), 'CLS_PROCD']);
+            ->get(['CLS_SPID', 'CLS_MDLCD', 'CLS_BOMRV', 'CLS_JOBNO', 'CLS_QTY', 'CLS_LUPDT', 'CLS_LINENO', 'CLS_PROCD']);
 
         $xwo = DB::connection('sqlsrv_wms')->table('XWO')
             ->whereIn('PDPP_WONO', $uniqueJobInput)
             ->get([
                 'PDPP_WONO',
                 'PDPP_MDLCD',
-                'PDPP_BOMRV',
-                DB::raw("0 CLS_QTY_PLOT")
+                'PDPP_BOMRV'
             ]);
 
         // bom
@@ -1217,15 +1216,14 @@ class ProductionController extends Controller
             ->whereIn('CLS_JOBNO', $uniqueJobInput)
             ->whereIn('CLS_PROCD', $processRequest)
             ->orderBy('CLS_LUPDT')
-            ->get(['CLS_SPID', 'CLS_MDLCD', 'CLS_BOMRV', 'CLS_JOBNO', 'CLS_QTY', 'CLS_LUPDT', 'CLS_LINENO', DB::raw("0 CLS_QTY_PLOT"), 'CLS_PROCD']);
+            ->get(['CLS_SPID', 'CLS_MDLCD', 'CLS_BOMRV', 'CLS_JOBNO', 'CLS_QTY', 'CLS_LUPDT', 'CLS_LINENO', 'CLS_PROCD']);
 
         $xwo = DB::connection('sqlsrv_wms')->table('XWO')
             ->whereIn('PDPP_WONO', $uniqueJobInput)
             ->get([
                 'PDPP_WONO',
                 'PDPP_MDLCD',
-                'PDPP_BOMRV',
-                DB::raw("0 CLS_QTY_PLOT")
+                'PDPP_BOMRV'
             ]);
 
         // bom
@@ -1269,7 +1267,7 @@ class ProductionController extends Controller
                 if ($_balanceTotalClosingPerJobCurrent > 0) {
                     $_totalClosingQtyPerJob[$_countClosingRowPerJob - 1] += $_balanceTotalClosingPerJobCurrent;
                 }
-                
+
                 for ($_i = 0; $_i < $_countClosingRowPerJob; $_i++) {
                     $_requirement = DB::connection('sqlsrv_wms')->table('VCIMS_MBOM_TBL')
                         ->where('MBOM_MDLCD', $_MDLCD)
