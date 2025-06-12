@@ -60,6 +60,7 @@ Route::prefix('production')->group(function () {
     Route::get('supply-status', [ProductionController::class, 'supplyStatus']);
     Route::post('supply-status-by-psn', [ProductionController::class, 'getSupplyStatusByPSN']);
     Route::get('supply-status-by-uc', [ProductionController::class, 'getSupplyStatusByUniqueKey']);
+    Route::get('supply-status-by-wo', [ProductionController::class, 'getSupplyStatusByWO']);
     Route::get('active', [ProductionController::class, 'getActiveJob']);
     Route::post('output', [ProductionController::class, 'saveSensorOutput']);
     Route::get('active-tlws', [ProductionController::class, 'getActivatedTLWS']);

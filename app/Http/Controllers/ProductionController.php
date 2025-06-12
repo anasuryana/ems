@@ -824,7 +824,7 @@ class ProductionController extends Controller
         $anotherRequirement = new Collection();
         foreach ($data['detail'] as $r) {
             $_MDLCD = $_BOMRV =  $_LUPDT = $_LINE = '';
-            $_countClosingRowPerJob = 0;
+            $_countClosingRowPerJob = $_totalClosingPerJobCurrent = 0;
             $_totalClosingQtyPerJob = [];
             $_LUPDT_CLOSING_ = [];
             $_LUPDT_CLOSING = date('Y-m-d H:i:s');
@@ -835,6 +835,7 @@ class ProductionController extends Controller
                     $_LUPDT .= $h->CLS_LUPDT . ',';
                     $_LINE .= $h->CLS_LINENO . ',';
                     $_totalClosingQtyPerJob[] = $h->CLS_QTY;
+                    $_totalClosingPerJobCurrent += $h->CLS_QTY;
                     $_countClosingRowPerJob++;
                     $_LUPDT_CLOSING = $h->CLS_LUPDT;
                     $_LUPDT_CLOSING_[] = $h->CLS_LUPDT;
@@ -855,6 +856,11 @@ class ProductionController extends Controller
             }
 
             if ($_countClosingRowPerJob > 1) {
+                // bandingkan antara yang tersimpan dengan inputan terbaru
+                $_balanceTotalClosingPerJobCurrent = $r['qty'] - $_totalClosingPerJobCurrent;
+                if ($_balanceTotalClosingPerJobCurrent > 0) {
+                    $_totalClosingQtyPerJob[$_countClosingRowPerJob - 1] += $_balanceTotalClosingPerJobCurrent;
+                }
 
                 for ($_i = 0; $_i < $_countClosingRowPerJob; $_i++) {
                     $_requirement = DB::connection('sqlsrv_wms')->table('VCIMS_MBOM_TBL')
@@ -878,7 +884,6 @@ class ProductionController extends Controller
                     $anotherRequirement = $anotherRequirement->merge($_requirement);
                 }
             } else {
-
                 $_requirement = DB::connection('sqlsrv_wms')->table('VCIMS_MBOM_TBL')
                     ->where('MBOM_MDLCD', $_MDLCD)
                     ->where('MBOM_BOMRV', $_BOMRV)
@@ -903,7 +908,7 @@ class ProductionController extends Controller
 
         $anotherRequirement = $anotherRequirement->sortBy('LUPDTR');
 
-        // calculateprocesS
+        // calculateproces
         foreach ($anotherRequirement as $h) {
             $__suppliedMaterial = DB::connection('sqlsrv_wms')->table('WMS_SWPS_HIS')
                 ->whereIn('SWPS_PSNNO', [$data['doc']])
@@ -1227,7 +1232,7 @@ class ProductionController extends Controller
         $anotherRequirement = new Collection();
         foreach ($data['detail'] as $r) {
             $_MDLCD = $_BOMRV =  $_LUPDT = $_LINE = '';
-            $_countClosingRowPerJob = 0;
+            $_countClosingRowPerJob = $_totalClosingPerJobCurrent = 0;
             $_totalClosingQtyPerJob = [];
             $_LUPDT_CLOSING_ = [];
             $_LUPDT_CLOSING = date('Y-m-d H:i:s');
@@ -1238,6 +1243,7 @@ class ProductionController extends Controller
                     $_LUPDT .= $h->CLS_LUPDT . ',';
                     $_LINE .= $h->CLS_LINENO . ',';
                     $_totalClosingQtyPerJob[] = $h->CLS_QTY;
+                    $_totalClosingPerJobCurrent += $h->CLS_QTY;
                     $_countClosingRowPerJob++;
                     $_LUPDT_CLOSING = $h->CLS_LUPDT;
                     $_LUPDT_CLOSING_[] = $h->CLS_LUPDT;
@@ -1258,7 +1264,12 @@ class ProductionController extends Controller
             }
 
             if ($_countClosingRowPerJob > 1) {
-
+                // bandingkan antara yang tersimpan dengan inputan terbaru
+                $_balanceTotalClosingPerJobCurrent = $r['qty'] - $_totalClosingPerJobCurrent;
+                if ($_balanceTotalClosingPerJobCurrent > 0) {
+                    $_totalClosingQtyPerJob[$_countClosingRowPerJob - 1] += $_balanceTotalClosingPerJobCurrent;
+                }
+                
                 for ($_i = 0; $_i < $_countClosingRowPerJob; $_i++) {
                     $_requirement = DB::connection('sqlsrv_wms')->table('VCIMS_MBOM_TBL')
                         ->where('MBOM_MDLCD', $_MDLCD)
@@ -1682,10 +1693,69 @@ class ProductionController extends Controller
     function getSupplyStatusByWO(Request $request)
     {
         // dapat nomor job yang dimaksud
-        $JobNumber = DB::connection('sqlsrv_wms')
+        $JobData = DB::connection('sqlsrv_wms')
             ->table('WMS_TLWS_TBL')
-            ->where('TLWS_JOBNO', 'like', $request->doc . '-' . $request->itemCode)
+            ->where('TLWS_JOBNO', 'like', '%' . $request->doc . '-' . $request->itemCode . '%')
+            ->select(DB::raw("RTRIM(TLWS_JOBNO) TLWS_JOBNO"))
             ->orderBy('TLWS_LUPDT', 'desc')->first();
+        $processContextHelper = [];
+
+        if ($request->processCode) {
+            $processContextHelper[] = ['PPSN1_PROCD', '=', $request->processCode];
+        } else {
+            $processMaster = DB::connection('sqlsrv_wms')->table('process_masters')
+                ->whereNull('deleted_at')
+                ->where('assy_code', $request->itemCode)
+                ->where('line_code', str_replace('SMT-', '', $request->lineCode))
+                ->first();
+
+            if ($processMaster->line_category ?? '' == 'HW') {
+                $processContextHelper[] = ['PPSN1_PROCD', '=', 'SMT-HW'];
+            } else {
+                $processContextHelper[] = ['PPSN1_LINENO', '=', $request->lineCode];
+            }
+        }
+
+        // get process context
+        $processContext = DB::connection('sqlsrv_wms')->table('XPPSN1')
+            ->where('PPSN1_WONO', $JobData->TLWS_JOBNO)
+            ->where($processContextHelper)
+            ->first([
+                DB::raw("RTRIM(PPSN1_PROCD) PPSN1_PROCD"),
+                DB::raw("RTRIM(PPSN1_PSNNO) PPSN1_PSNNO")
+            ]);
+
+        $CLSJob = DB::connection('sqlsrv_wms')->table('WMS_CLS_JOB')
+            ->where('CLS_PSNNO', $processContext->PPSN1_PSNNO)
+            ->where('CLS_PROCD', $processContext->PPSN1_PROCD)
+            ->groupBy('CLS_JOBNO', 'CLS_PROCD')
+            ->select(DB::raw('RTRIM(CLS_JOBNO) CLS_JOBNO'), DB::raw('RTRIM(CLS_PROCD) CLS_PROCD'), DB::raw("SUM(CLS_QTY) CLS_QTY"))
+            ->get();
+
+        $dataDetail = [];
+        foreach ($CLSJob as $r) {
+            $dataDetail[] = [
+                'process' => $r->CLS_PROCD,
+                'job' => $r->CLS_JOBNO,
+                'qty' => $r->CLS_QTY
+            ];
+        }
+
+        if (empty($dataDetail)) { // ketika belum ada closing gak perlu kalkulasi
+            $dataDetail[] = [
+                'process' => $processContext->PPSN1_PROCD,
+                'job' => $JobData->TLWS_JOBNO,
+                'qty' => $request->qty
+            ];
+        }
+
+        $data = [
+            'doc' => $processContext->PPSN1_PSNNO,
+            'procd' => $processContext->PPSN1_PROCD,
+            'detail' => $dataDetail,
+        ];
+
+        return ['data' => $JobData, '$processContext' => $processContext];
     }
 
     function getTreeInside(Request $request)
