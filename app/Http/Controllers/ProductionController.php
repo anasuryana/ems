@@ -1622,12 +1622,14 @@ class ProductionController extends Controller
         if ($respon['message'] == 'OK') {
             $status = [
                 'code' => true,
-                'message' => $respon['message']
+                'message' => $respon['message'],
+                'job' => $JobData->TLWS_JOBNO
             ];
         } else {
             $status = [
                 'code' => false,
-                'message' => 'Supply is not enough'
+                'message' => 'Supply is not enough',
+                'job' => $JobData->TLWS_JOBNO
             ];
         }
 
