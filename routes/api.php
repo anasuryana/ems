@@ -57,7 +57,7 @@ Route::prefix('ict')->group(function () {
     Route::get('to-spreadsheet-as-reminder', [ICTController::class, 'reminderAsSpreadsheet']);
 });
 Route::prefix('production')->group(function () {
-    Route::get('supply-status', [ProductionController::class, 'supplyStatus']);
+    Route::get('supply-status', [ProductionController::class, 'getSupplyStatusByWO']);
     Route::post('supply-status-by-psn', [ProductionController::class, 'getSupplyStatusByPSN']);
     Route::get('supply-status-by-uc', [ProductionController::class, 'getSupplyStatusByUniqueKey']);
     Route::get('supply-status-by-wo', [ProductionController::class, 'getSupplyStatusByWO']);

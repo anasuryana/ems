@@ -1313,12 +1313,12 @@ class ProductionController extends Controller
 
         $anotherRequirement = $anotherRequirement->sortBy('LUPDTR');
 
-        // calculateprocesS
+        // calculateproces
         foreach ($anotherRequirement as $h) {
             $__suppliedMaterial = DB::connection('sqlsrv_wms')->table('WMS_SWPS_HIS')
                 ->whereIn('SWPS_PSNNO', [$data['doc']])
                 ->where('SWPS_REMARK', 'OK')
-                ->where('SWPS_NITMCD', $data['partCode'])
+                ->whereIn('SWPS_PROCD', $processRequest)
                 ->where('SWPS_JOBNO', $h->FLAGJOBNO)
                 ->groupBy('SWPS_NITMCD', 'NQTY', 'SWPS_NUNQ', 'SWPS_NLOTNO')
                 ->select(
@@ -1333,7 +1333,7 @@ class ProductionController extends Controller
             $_suppliedMaterial = DB::connection('sqlsrv_wms')->table('WMS_SWMP_HIS')
                 ->whereIn('SWMP_PSNNO', [$data['doc']])
                 ->where('SWMP_REMARK', 'OK')
-                ->where('SWMP_ITMCD', $data['partCode'])
+                ->whereIn('SWMP_PROCD', $processRequest)
                 ->where('SWMP_JOBNO', $h->FLAGJOBNO)
                 ->groupBy('SWMP_ITMCD', 'SWMP_QTY', 'SWMP_UNQ', 'SWMP_LOTNO')
                 ->select(
@@ -1351,206 +1351,59 @@ class ProductionController extends Controller
                 ->orderBy('LUPDT')
                 ->get();
             foreach ($__labelRelatedJOB as $l) {
-                $reqBal = $h->REQQT - $h->FILLQT;
-                if ($reqBal > 0) {
-                    foreach ($scannedLabels as &$lm) {
-                        if ($l->UNQ == $lm->UNQ) {
-                            if ($lm->QTY > 0) {
-                                $_qtyContextUseLabel = $reqBal;
-                                if ($lm->QTY >= $reqBal) {
-                                    $h->FILLQT += $reqBal;
-                                    $lm->QTY -= $reqBal;
-                                } else {
-                                    $_qtyContextUseLabel = $lm->QTY;
-                                    $h->FILLQT += $lm->QTY;
-                                    $lm->QTY = 0;
+                if ($h->MBOM_ITMCD == $l->ITMCD) {
+                    $reqBal = $h->REQQT - $h->FILLQT;
+                    if ($reqBal > 0) {
+                        foreach ($scannedLabels as &$lm) {
+                            if ($l->UNQ == $lm->UNQ) {
+                                if ($lm->QTY > 0) {
+                                    $_qtyContextUseLabel = $reqBal;
+                                    if ($lm->QTY >= $reqBal) {
+                                        $h->FILLQT += $reqBal;
+                                        $lm->QTY -= $reqBal;
+                                    } else {
+                                        $_qtyContextUseLabel = $lm->QTY;
+                                        $h->FILLQT += $lm->QTY;
+                                        $lm->QTY = 0;
+                                    }
+                                    $scannedLabelDetails[] = [
+                                        'ITMCD' => $lm->ITMCD,
+                                        'QTY' => $l->QTY,
+                                        'UNQ' => $lm->UNQ,
+                                        'LINE' => '',
+                                        'CLS_LUPDT' => '',
+                                        'CALCULATE_USE' => $_qtyContextUseLabel,
+                                        'BALANCE_LABEL' => $lm->QTY,
+                                        'RESULT' => '',
+                                    ];
+                                    if (!in_array($lm->UNQ, $scannedLabelID)) {
+                                        $scannedLabelID[] = $lm->UNQ;
+                                    }
                                 }
-                                $scannedLabelDetails[] = [
-                                    'ITMCD' => $lm->ITMCD,
-                                    'QTY' => $l->QTY,
-                                    'UNQ' => $lm->UNQ,
-                                    'LINE' => '',
-                                    'CLS_LUPDT' => '',
-                                    'CALCULATE_USE' => $_qtyContextUseLabel,
-                                    'BALANCE_LABEL' => $lm->QTY,
-                                    'RESULT' => '',
-                                ];
-                                if (!in_array($lm->UNQ, $scannedLabelID)) {
-                                    $scannedLabelID[] = $lm->UNQ;
-                                }
+                                break;
                             }
-                            break;
                         }
-                    }
-                    unset($lm);
-                } else {
-                    break;
-                }
-            }
-        }
-
-        $psnO = DB::connection('sqlsrv_wms')->table('SPLSCN_TBL')->where('SPLSCN_DOC', $data['doc'])
-            ->where('SPLSCN_ITMCD', $data['partCode'])
-            ->get(['SPLSCN_UNQCODE']);
-        $neccessaryCode = [];
-        foreach ($psnO as $o) {
-            $this->_findChild($o->SPLSCN_UNQCODE, $data['partCode']);
-
-            foreach ($this->historySplitLabel as $r) {
-                if ($r['status'] != '') {
-                    if (!str_contains($r['status'], '✔')) {
-                        if (!in_array($r['code'], $neccessaryCode)) {
-                            $neccessaryCode[] = $r['code'];
-                        }
+                        unset($lm);
+                    } else {
+                        break;
                     }
                 }
             }
         }
-
-        // splitted && necessary
-        $neccessaryCodeO = DB::connection('sqlsrv_wms')->table('raw_material_labels')
-            ->whereIn('code', $neccessaryCode)
-            ->get([
-                DB::raw('item_code ITMCD'),
-                DB::raw('quantity QTY'),
-                DB::raw('code UNQ'),
-                DB::raw("'' LINE"),
-                DB::raw("NULL CLS_LUPDT"),
-                DB::raw("NULL CALCULATE_USE"),
-                DB::raw("NULL BALANCE_LABEL"),
-                DB::raw("NULL RESULT"),
-            ]);
-
-        //  not splitted && not scanned
-
-        // this variable handle on-progres scanning (not closed yet)
-        $suppliedMaterial1 = DB::connection('sqlsrv_wms')->table('WMS_SWPS_HIS')
-            ->whereIn('SWPS_PSNNO', [$data['doc']])
-            ->where('SWPS_REMARK', 'OK')
-            ->where('SWPS_NITMCD', $data['partCode'])
-            ->whereNotIn('SWPS_NUNQ', $scannedLabelID)
-            ->groupBy('SWPS_NITMCD', 'NQTY', 'SWPS_NUNQ', 'SWPS_NLOTNO')
-            ->select(
-                DB::raw('RTRIM(SWPS_NITMCD) ITMCD'),
-                DB::raw('NQTY QTY'),
-                DB::raw('RTRIM(SWPS_NLOTNO) LOTNO'),
-                DB::raw('RTRIM(SWPS_NUNQ) UNQX'),
-                DB::raw('NQTY BAKQTY'),
-                DB::raw('MIN(SWPS_LUPDT) LUPDT'),
-                DB::raw('MIN(SWPS_LINENO) MINLINE'),
-            );
-
-        // this variable handle on-progres scanning (not closed yet)
-        $suppliedMaterial2 = DB::connection('sqlsrv_wms')->table('WMS_SWMP_HIS')
-            ->whereIn('SWMP_PSNNO', [$data['doc']])
-            ->where('SWMP_REMARK', 'OK')
-            ->where('SWMP_ITMCD', $data['partCode'])
-            ->whereNotIn('SWMP_UNQ', $scannedLabelID)
-            ->groupBy('SWMP_ITMCD', 'SWMP_QTY', 'SWMP_UNQ', 'SWMP_LOTNO')
-            ->select(
-                DB::raw('RTRIM(SWMP_ITMCD) ITMCD'),
-                DB::raw('SWMP_QTY QTY'),
-                DB::raw('RTRIM(SWMP_LOTNO) LOTNO'),
-                DB::raw('RTRIM(SWMP_UNQ) UNQX'),
-                DB::raw('SWMP_QTY BAKQTY'),
-                DB::raw('MIN(SWMP_LUPDT) LUPDT'),
-                DB::raw('MIN(SWMP_LINENO) MINLINE'),
-            );
-
-        $labelRelatedJOB = DB::connection('sqlsrv_wms')->query()
-            ->fromSub($suppliedMaterial1, 'v1')
-            ->union($suppliedMaterial2);
-
-        $neccessaryCodeFreshO = DB::connection('sqlsrv_wms')
-            ->table('raw_material_labels')
-            ->leftJoin('SPLSCN_TBL', 'SPLSCN_TBL.SPLSCN_UNQCODE', '=', 'raw_material_labels.code')
-            ->leftJoinSub($labelRelatedJOB, 'vx', 'UNQX', '=', 'code')
-            ->where('SPLSCN_TBL.SPLSCN_DOC', $data['doc'])
-            ->whereNull('splitted')
-            ->whereNotIn('code', $scannedLabelID)
-            ->where('raw_material_labels.item_code', $data['partCode'])
-            ->get([
-                DB::raw('item_code ITMCD'),
-                DB::raw('quantity QTY'),
-                DB::raw('code UNQ'),
-                DB::raw("'' LINE"),
-                DB::raw("NULL CLS_LUPDT"),
-                DB::raw("NULL CALCULATE_USE"),
-                DB::raw("NULL BALANCE_LABEL"),
-                DB::raw("NULL RESULT"),
-                DB::raw("UNQX"),
-            ]);
-
-        $scannedLabelID = array_merge($scannedLabelID, $neccessaryCodeFreshO->unique('UNQ')->pluck('UNQ')->toArray());
-
-        // for get line information
-        $suppliedMaterial1 = DB::connection('sqlsrv_wms')->table('WMS_SWPS_HIS')
-            ->whereIn('SWPS_PSNNO', [$data['doc']])
-            ->where('SWPS_REMARK', 'OK')
-            ->where('SWPS_NITMCD', $data['partCode'])
-            ->whereIn('SWPS_NUNQ', $scannedLabelID)
-            ->groupBy('SWPS_NUNQ', 'SWPS_LINENO', 'SWPS_LUPDT')
-            ->select(
-                DB::raw('RTRIM(SWPS_NUNQ) UNQX'),
-                DB::raw('SWPS_LUPDT LUPDT'),
-                DB::raw('SWPS_LINENO MINLINE'),
-            );
-
-        // this variable handle on-progres scanning (not closed yet)
-        $suppliedMaterial2 = DB::connection('sqlsrv_wms')->table('WMS_SWMP_HIS')
-            ->whereIn('SWMP_PSNNO', [$data['doc']])
-            ->where('SWMP_REMARK', 'OK')
-            ->where('SWMP_ITMCD', $data['partCode'])
-            ->whereIn('SWMP_UNQ', $scannedLabelID)
-            ->groupBy('SWMP_UNQ', 'SWMP_LINENO', 'SWMP_LUPDT')
-            ->select(
-                DB::raw('RTRIM(SWMP_UNQ) UNQX'),
-                DB::raw('SWMP_LUPDT LUPDT'),
-                DB::raw('SWMP_LINENO MINLINE'),
-            );
-
-        $labelRelatedJOB = DB::connection('sqlsrv_wms')->query()
-            ->fromSub($suppliedMaterial1, 'v1')
-            ->union($suppliedMaterial2)
-            ->orderBy('LUPDT')
-            ->get();
-
-        $completedLabel = [];
-        foreach ($scannedLabelDetails as &$d) {
-            $d['IS_COMPLETED'] = '';
-
-            if ($d['BALANCE_LABEL'] == 0) {
-                if (!in_array($d['UNQ'], $completedLabel)) {
-                    $completedLabel[] = $d['UNQ'];
-                }
-            }
-            foreach ($labelRelatedJOB as $l) {
-                if ($d['UNQ'] == $l->UNQX) {
-                    $d['LINE'] .=  $l->MINLINE . ',';
-                    $d['CLS_LUPDT'] .=  $l->LUPDT . ',';
-                }
-            }
-        }
-        unset($d);
-        // end for
-
-        foreach ($scannedLabelDetails as &$d) {
-            foreach ($completedLabel as $n) {
-                if ($d['UNQ'] == $n) {
-                    $d['IS_COMPLETED'] = 1;
-                    break;
-                }
-            }
-        }
-        unset($d);
 
         $message = '';
 
-
+        $outstandingScan = [];
         foreach ($anotherRequirement as $r) {
-            $balance = $r->REQQT - $r->FILLQT;
-            if ($balance > 0) {
-                $message .= '👉 Supply is not enough for ' . $r->FLAGJOBNO . ' Req : ' . (int)$r->REQQT . ', Supplied : ' . (int)$r->FILLQT . ', balance : ' . $balance . ' <br>';
+            if ($r->FLAGJOBNO == $data['jobFocus']) {
+                $balance = $r->REQQT - $r->FILLQT;
+                if ($balance > 0) {
+                    $message .= '👉 Supply is not enough for ' . $r->FLAGJOBNO . ', ' . $r->MBOM_ITMCD . ' Req : ' . (int)$r->REQQT . ', Supplied : ' . (int)$r->FILLQT . ', balance : ' . $balance . ' <br>';
+                    $outstandingScan[] = [
+                        'partCode' => $r->MBOM_ITMCD,
+                        'outstandingQty' => $balance,
+                    ];
+                }
             }
         }
         if (empty($message)) {
@@ -1558,10 +1411,9 @@ class ProductionController extends Controller
         }
 
         return [
-            'data' => $scannedLabelDetails,
-            'dataReff' => $neccessaryCodeO,
+            'data' => $anotherRequirement,
             'message' => $message,
-            'dataFreshReff' => $neccessaryCodeFreshO
+            'outstandingScan' => $outstandingScan
         ];
     }
 
@@ -1732,11 +1584,22 @@ class ProductionController extends Controller
 
         $dataDetail = [];
         foreach ($CLSJob as $r) {
-            $dataDetail[] = [
-                'process' => $r->CLS_PROCD,
-                'job' => $r->CLS_JOBNO,
-                'qty' => $r->CLS_QTY
-            ];
+            if (
+                $r->CLS_JOBNO == $JobData->TLWS_JOBNO
+                && $r->CLS_PROCD == $processContext->PPSN1_PROCD
+            ) {
+                $dataDetail[] = [
+                    'process' => $r->CLS_PROCD,
+                    'job' => $r->CLS_JOBNO,
+                    'qty' => $request->qty > $r->CLS_QTY ? $request->qty : $r->CLS_QTY
+                ];
+            } else {
+                $dataDetail[] = [
+                    'process' => $r->CLS_PROCD,
+                    'job' => $r->CLS_JOBNO,
+                    'qty' => $r->CLS_QTY
+                ];
+            }
         }
 
         if (empty($dataDetail)) { // ketika belum ada closing gak perlu kalkulasi
@@ -1751,9 +1614,27 @@ class ProductionController extends Controller
             'doc' => $processContext->PPSN1_PSNNO,
             'procd' => $processContext->PPSN1_PROCD,
             'detail' => $dataDetail,
+            'jobFocus' => $JobData->TLWS_JOBNO
         ];
 
-        return ['data' => $JobData, '$processContext' => $processContext];
+        $respon = $this->getSupplyStatusByPSNDataV2($data);
+
+        if ($respon['message'] == 'OK') {
+            $status = [
+                'code' => true,
+                'message' => $respon['message']
+            ];
+        } else {
+            $status = [
+                'code' => false,
+                'message' => 'Supply is not enough'
+            ];
+        }
+
+        return [
+            'status' => $status,
+            'data' => $respon['outstandingScan'],
+        ];
     }
 
     function getTreeInside(Request $request)
