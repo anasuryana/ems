@@ -1559,7 +1559,7 @@ class ProductionController extends Controller
                 ->where('line_code', str_replace('SMT-', '', $request->lineCode))
                 ->first();
 
-            if ($processMaster->line_category ?? '' == 'HW') {
+            if ($processMaster->line_category ?? '' == 'HW' || !$processMaster) {
                 $processContextHelper[] = ['PPSN1_PROCD', '=', 'SMT-HW'];
             } else {
                 $processContextHelper[] = ['PPSN1_LINENO', '=', $request->lineCode];
