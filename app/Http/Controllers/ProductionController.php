@@ -1542,10 +1542,12 @@ class ProductionController extends Controller
 
     function getSupplyStatusByWO(Request $request)
     {
+        $job = $request->doc . '-' . $request->itemCode;
+
         // dapat nomor job yang dimaksud
         $JobData = DB::connection('sqlsrv_wms')
             ->table('WMS_TLWS_TBL')
-            ->where('TLWS_JOBNO', 'like', '%' . $request->doc . '-' . $request->itemCode . '%')
+            ->where('TLWS_JOBNO', 'like', '%' . $job . '%')
             ->select(DB::raw("RTRIM(TLWS_JOBNO) TLWS_JOBNO"))
             ->orderBy('TLWS_LUPDT', 'desc')->first();
         $processContextHelper = [];
@@ -1564,6 +1566,15 @@ class ProductionController extends Controller
             } else {
                 $processContextHelper[] = ['PPSN1_LINENO', '=', $request->lineCode];
             }
+        }
+
+        if (empty($JobData->TLWS_JOBNO)) {
+            $status = [
+                'code' => false,
+                'message' => 'Job Number is not found',
+                'job' => $job
+            ];
+            return ['status' => $status, 'master' => $JobData, 'data' => []];
         }
 
         // get process context
