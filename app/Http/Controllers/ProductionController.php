@@ -1771,6 +1771,44 @@ class ProductionController extends Controller
 
         $data = $request->json()->all();
 
+        $__suppliedMaterial = DB::connection('sqlsrv_wms')->table('WMS_SWPS_HIS')
+            ->whereIn('SWPS_PSNNO', [$data['doc']])
+            ->where('SWPS_NITMCD', $data['partCode'])
+            ->where('SWPS_REMARK', 'OK')
+            ->groupBy('SWPS_NITMCD', 'NQTY', 'SWPS_NUNQ', 'SWPS_NLOTNO')
+            ->select(
+                DB::raw('MAX(RTRIM(SWPS_MAINITMCD)) MITMCD'),
+                DB::raw('RTRIM(SWPS_NITMCD) ITMCD'),
+                DB::raw('NQTY QTY'),
+                DB::raw('RTRIM(SWPS_NLOTNO) LOTNO'),
+                DB::raw('RTRIM(SWPS_NUNQ) UNQ'),
+                DB::raw('NQTY BAKQTY'),
+            );
+
+        $_suppliedMaterial = DB::connection('sqlsrv_wms')->table('WMS_SWMP_HIS')
+            ->whereIn('SWMP_PSNNO', [$data['doc']])
+            ->where('SWMP_ITMCD',  $data['partCode'])
+            ->where('SWMP_REMARK', 'OK')
+            ->groupBy('SWMP_ITMCD', 'SWMP_QTY', 'SWMP_UNQ', 'SWMP_LOTNO')
+            ->select(
+                DB::raw('MAX(RTRIM(SWMP_MAINITMCD)) MITMCD'),
+                DB::raw('RTRIM(SWMP_ITMCD) ITMCD'),
+                DB::raw('SWMP_QTY QTY'),
+                DB::raw('RTRIM(SWMP_LOTNO) LOTNO'),
+                DB::raw('RTRIM(SWMP_UNQ) UNQ'),
+                DB::raw('SWMP_QTY BAKQTY'),
+            );
+
+        $scannedLabels = DB::connection('sqlsrv_wms')->query()
+            ->fromSub($_suppliedMaterial, 'v1')
+            ->union($__suppliedMaterial)->get();
+
+        if ($scannedLabels->count() > 0) {
+            if ($scannedLabels->first()->ITMCD != $scannedLabels->first()->MITMCD) {
+                $data['partCode'] = $scannedLabels->first()->MITMCD;
+            }
+        }
+
         $respon = $this->getSupplyStatusByPSNData($data);
 
         return $respon;
