@@ -1784,6 +1784,7 @@ class ProductionController extends Controller
             ->where('SWPS_REMARK', 'OK')
             ->groupBy('SWPS_NITMCD', 'NQTY', 'SWPS_NUNQ', 'SWPS_NLOTNO')
             ->select(
+                DB::raw('MAX(RTRIM(SWPS_MAINITMCD)) MITMCD'),
                 DB::raw('RTRIM(SWPS_NITMCD) ITMCD'),
                 DB::raw('NQTY QTY'),
                 DB::raw('RTRIM(SWPS_NLOTNO) LOTNO'),
@@ -1796,6 +1797,7 @@ class ProductionController extends Controller
             ->where('SWMP_REMARK', 'OK')
             ->groupBy('SWMP_ITMCD', 'SWMP_QTY', 'SWMP_UNQ', 'SWMP_LOTNO')
             ->select(
+                DB::raw('MAX(RTRIM(SWMP_MAINITMCD)) MITMCD'),
                 DB::raw('RTRIM(SWMP_ITMCD) ITMCD'),
                 DB::raw('SWMP_QTY QTY'),
                 DB::raw('RTRIM(SWMP_LOTNO) LOTNO'),
@@ -1846,7 +1848,7 @@ class ProductionController extends Controller
 
             $data = [
                 'doc' => $request->doc,
-                'partCode' => $scannedLabels->first()->ITMCD,
+                'partCode' => $scannedLabels->first()->MITMCD,
                 'detail' => $dataDetail,
             ];
 
@@ -1861,8 +1863,8 @@ class ProductionController extends Controller
             return [
                 'data' => [
                     'partCode' => $scannedLabels->first()->ITMCD,
-                    'qtyLabel' => (int)$lastRow['QTY'] ?? 0,
-                    'qtyBalance' => (int)$lastRow['BALANCE_LABEL'] ?? 0
+                    'qtyLabel' => $lastRow ? (int)$lastRow['QTY'] ?? 0 : 0,
+                    'qtyBalance' => $lastRow ? (int)$lastRow['BALANCE_LABEL'] ?? 0 : 0
                 ]
             ];
         }
