@@ -102,6 +102,7 @@ Route::prefix('item')->group(function () {
 
 Route::prefix('receiving')->group(function () {
     Route::post('upload-pl', [ReceivePackingListController::class, 'uploadSpreadsheet']);
+    Route::get('diff-with-master', [ReceivePackingListController::class, 'getDiffWithMaster']);
 });
 
 Route::post('/welcome', function () {

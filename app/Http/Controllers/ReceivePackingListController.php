@@ -57,6 +57,7 @@ class ReceivePackingListController extends Controller
                         'delivery_quantity' => str_replace(',', '', trim($sheet->getCell('P' . $rowIndex)->getCalculatedValue())),
                         'ship_quantity' => trim($sheet->getCell('U' . $rowIndex)->getCalculatedValue()),
                         'pallet' => $Pallet,
+                        'item_name' => trim($sheet->getCell('F' . $rowIndex + 1)->getCalculatedValue())
                     ];
 
                     $rowIndex += 2;
@@ -87,5 +88,18 @@ class ReceivePackingListController extends Controller
             'doc' => $DONumber,
             'data' => $data
         ];
+    }
+
+    function getDiffWithMaster(Request $request)
+    {
+        $data0 = DB::connection('sqlsrv_wms')->table('receive_p_l_s')
+            ->whereNull('deleted_at')
+            ->select('delivery_doc', 'item_code', 'item_name');
+
+        $data = DB::connection('sqlsrv_wms')->query()->fromSub($data0, 'v1')
+            ->leftJoin('MITM_TBL', 'item_code', '=', 'MITM_ITMCD')
+            ->whereRaw("item_name!=MITM_SPTNO")
+            ->get(['v1.*', DB::raw("RTRIM(MITM_SPTNO) MITM_SPTNO")]);
+        return ['data' => $data];
     }
 }
