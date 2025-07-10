@@ -1052,7 +1052,7 @@ class ProductionController extends Controller
                                 $__suppliedMaterial = DB::connection('sqlsrv_wms')->table('WMS_SWPS_HIS')
                                     ->whereIn('SWPS_PSNNO', [$data['doc']])
                                     ->where('SWPS_REMARK', 'OK')
-                                    ->whereIn('SWPS_NITMCD', [$alt->SUB, $alt->SUB1])
+                                    ->whereIn('SWPS_NITMCD', [$alt->SUB, $alt->SUB1, $alt->EPSON_ORG_PART])
                                     ->where('SWPS_JOBNO', $h->FLAGJOBNO)
                                     ->groupBy('SWPS_NITMCD', 'NQTY', 'SWPS_NUNQ', 'SWPS_NLOTNO')
                                     ->select(
@@ -1067,7 +1067,7 @@ class ProductionController extends Controller
                                 $_suppliedMaterial = DB::connection('sqlsrv_wms')->table('WMS_SWMP_HIS')
                                     ->whereIn('SWMP_PSNNO', [$data['doc']])
                                     ->where('SWMP_REMARK', 'OK')
-                                    ->whereIn('SWMP_ITMCD', [$alt->SUB, $alt->SUB1])
+                                    ->whereIn('SWMP_ITMCD', [$alt->SUB, $alt->SUB1, $alt->EPSON_ORG_PART])
                                     ->where('SWMP_JOBNO', $h->FLAGJOBNO)
                                     ->groupBy('SWMP_ITMCD', 'SWMP_QTY', 'SWMP_UNQ', 'SWMP_LOTNO')
                                     ->select(
@@ -1631,7 +1631,7 @@ class ProductionController extends Controller
                                     ->whereIn('SWPS_PSNNO', [$data['doc']])
                                     ->where('SWPS_REMARK', 'OK')
                                     ->whereIn('SWPS_PROCD', $processRequest)
-                                    ->whereIn('SWPS_NITMCD', [$alt->SUB, $alt->SUB1])
+                                    ->whereIn('SWPS_NITMCD', [$alt->SUB, $alt->SUB1, $alt->EPSON_ORG_PART])
                                     ->where('SWPS_JOBNO', $h->FLAGJOBNO)
                                     ->groupBy('SWPS_NITMCD', 'NQTY', 'SWPS_NUNQ', 'SWPS_NLOTNO')
                                     ->select(
@@ -1647,7 +1647,7 @@ class ProductionController extends Controller
                                     ->whereIn('SWMP_PSNNO', [$data['doc']])
                                     ->where('SWMP_REMARK', 'OK')
                                     ->whereIn('SWMP_PROCD', $processRequest)
-                                    ->whereIn('SWMP_ITMCD', [$alt->SUB, $alt->SUB1])
+                                    ->whereIn('SWMP_ITMCD', [$alt->SUB, $alt->SUB1, $alt->EPSON_ORG_PART])
                                     ->where('SWMP_JOBNO', $h->FLAGJOBNO)
                                     ->groupBy('SWMP_ITMCD', 'SWMP_QTY', 'SWMP_UNQ', 'SWMP_LOTNO')
                                     ->select(
