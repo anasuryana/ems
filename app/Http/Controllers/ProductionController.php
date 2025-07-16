@@ -864,7 +864,7 @@ class ProductionController extends Controller
                     $_requirement = DB::connection('sqlsrv_wms')->table('VCIMS_MBOM_TBL')
                         ->where('MBOM_MDLCD', $_MDLCD)
                         ->where('MBOM_BOMRV', $_BOMRV)
-                        ->where('MBOM_ITMCD', $data['partCode'])
+                        ->whereIn('MBOM_ITMCD', $data['partCodeArray'])
                         ->whereIn('MBOM_PROCD', $processRequest)
                         ->groupBy('MBOM_ITMCD', 'MBOM_SPART', 'MBOM_PROCD', 'MBOM_MDLCD')
                         ->get([
@@ -886,7 +886,7 @@ class ProductionController extends Controller
                 $_requirement = DB::connection('sqlsrv_wms')->table('VCIMS_MBOM_TBL')
                     ->where('MBOM_MDLCD', $_MDLCD)
                     ->where('MBOM_BOMRV', $_BOMRV)
-                    ->where('MBOM_ITMCD', $data['partCode'])
+                    ->whereIn('MBOM_ITMCD', $data['partCodeArray'])
                     ->whereIn('MBOM_PROCD', $processRequest)
                     ->groupBy('MBOM_ITMCD', 'MBOM_SPART', 'MBOM_PROCD', 'MBOM_MDLCD')
                     ->get([
@@ -1589,7 +1589,6 @@ class ProductionController extends Controller
                     ->where('SWPS_REMARK', 'OK')
                     ->whereIn('SWPS_PROCD', $processRequest)
                     ->whereNotIn('SWPS_NITMCD', $outstandingItemDistinct)
-                    ->where('SWPS_JOBNO', $h->FLAGJOBNO)
                     ->groupBy('SWPS_NITMCD', 'NQTY', 'SWPS_NUNQ', 'SWPS_NLOTNO')
                     ->select(
                         DB::raw('RTRIM(SWPS_NITMCD) ITMCD'),
@@ -1605,7 +1604,6 @@ class ProductionController extends Controller
                     ->where('SWMP_REMARK', 'OK')
                     ->whereIn('SWMP_PROCD', $processRequest)
                     ->whereNotIn('SWMP_ITMCD', $outstandingItemDistinct)
-                    ->where('SWMP_JOBNO', $h->FLAGJOBNO)
                     ->groupBy('SWMP_ITMCD', 'SWMP_QTY', 'SWMP_UNQ', 'SWMP_LOTNO')
                     ->select(
                         DB::raw('RTRIM(SWMP_ITMCD) ITMCD'),
@@ -1666,7 +1664,6 @@ class ProductionController extends Controller
                                     ->get();
 
                                 foreach ($__labelRelatedJOB as $l) {
-
                                     $reqBal = $h->REQQT - $h->FILLQT;
                                     if ($reqBal > 0) {
                                         foreach ($scannedLabelsAlt as &$lm) {
@@ -1804,8 +1801,52 @@ class ProductionController extends Controller
             ->union($__suppliedMaterial)->get();
 
         if ($scannedLabels->count() > 0) {
-            if ($scannedLabels->first()->ITMCD != $scannedLabels->first()->MITMCD) {
-                $data['partCode'] = $scannedLabels->first()->MITMCD;
+            foreach ($scannedLabels as $label) {
+                if ($label->ITMCD != $label->MITMCD) {
+                    $data['partCode'] = $label->MITMCD;
+                    $data['partCodeArray'] = [$label->MITMCD, $label->ITMCD];
+                }
+            }
+        } else {
+            $__suppliedMaterial2 = DB::connection('sqlsrv_wms')->table('WMS_SWPS_HIS')
+                ->whereIn('SWPS_PSNNO', [$data['doc']])
+                ->where('SWPS_NITMCD', $data['partCode'])
+                ->where('SWPS_REMARK', 'OK')
+                ->groupBy('SWPS_NITMCD', 'NQTY', 'SWPS_NUNQ', 'SWPS_NLOTNO')
+                ->select(
+                    DB::raw('MAX(RTRIM(SWPS_MAINITMCD)) MITMCD'),
+                    DB::raw('RTRIM(SWPS_NITMCD) ITMCD'),
+                    DB::raw('NQTY QTY'),
+                    DB::raw('RTRIM(SWPS_NLOTNO) LOTNO'),
+                    DB::raw('RTRIM(SWPS_NUNQ) UNQ'),
+                    DB::raw('NQTY BAKQTY'),
+                );
+
+            $_suppliedMaterial2 = DB::connection('sqlsrv_wms')->table('WMS_SWMP_HIS')
+                ->whereIn('SWMP_PSNNO', [$data['doc']])
+                ->where('SWMP_MAINITMCD',  $data['partCode'])
+                ->where('SWMP_REMARK', 'OK')
+                ->groupBy('SWMP_ITMCD', 'SWMP_QTY', 'SWMP_UNQ', 'SWMP_LOTNO')
+                ->select(
+                    DB::raw('MAX(RTRIM(SWMP_MAINITMCD)) MITMCD'),
+                    DB::raw('RTRIM(SWMP_ITMCD) ITMCD'),
+                    DB::raw('SWMP_QTY QTY'),
+                    DB::raw('RTRIM(SWMP_LOTNO) LOTNO'),
+                    DB::raw('RTRIM(SWMP_UNQ) UNQ'),
+                    DB::raw('SWMP_QTY BAKQTY'),
+                );
+
+            $scannedLabels2 = DB::connection('sqlsrv_wms')->query()
+                ->fromSub($_suppliedMaterial2, 'v1')
+                ->union($__suppliedMaterial2)->get();
+
+            if ($scannedLabels2->count() > 0) {
+                foreach ($scannedLabels2 as $label) {
+                    if ($label->ITMCD != $label->MITMCD) {
+                        $data['partCode'] = $label->MITMCD;
+                        $data['partCodeArray'] = [$label->MITMCD, $label->ITMCD];
+                    }
+                }
             }
         }
 
