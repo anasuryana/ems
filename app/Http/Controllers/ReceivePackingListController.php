@@ -29,8 +29,8 @@ class ReceivePackingListController extends Controller
             $uploadedFiles = $request->file('file_upload'); // Ini akan mengembalikan array objek UploadedFile            
             foreach ($uploadedFiles as $file) {
                 $filePath = $file->getRealPath();
-
-                $reader = IOFactory::createReader(ucfirst('Xls'));
+                $extension = $file->getClientOriginalExtension();
+                $reader = IOFactory::createReader(ucfirst($extension));
                 $spreadsheet = $reader->load($filePath);
                 $sheet = $spreadsheet->getActiveSheet();
                 $DONumber = $sheet->getCell('X7')->getCalculatedValue();
@@ -39,46 +39,82 @@ class ReceivePackingListController extends Controller
                 $Pallet = '';
                 $data = [];
 
-                while (!empty($sheet->getCell('F' . $rowIndex)->getCalculatedValue())) { // patokan dari kolom F                
-                    $_pallet = trim($sheet->getCell('AI' . $rowIndex)->getCalculatedValue());
-                    if ($Pallet != $_pallet && $_pallet != '') {
-                        $Pallet = trim($sheet->getCell('AI' . $rowIndex)->getCalculatedValue());
-                    }
-
-                    $_date = trim($sheet->getCell('M' . $rowIndex)->getValue());
-                    $_date_o = \Carbon\Carbon::instance(Date::excelToDateTimeObject($_date));
-
-                    $data[] = [
-                        'delivery_doc' => $DONumber,
-                        'created_by' => 'ane',
-                        'created_at' => date('Y-m-d H:i:s'),
-                        'item_code' => trim($sheet->getCell('F' . $rowIndex)->getCalculatedValue()),
-                        'delivery_date' => $_date_o->format('Y-m-d'),
-                        'delivery_quantity' => str_replace(',', '', trim($sheet->getCell('P' . $rowIndex)->getCalculatedValue())),
-                        'ship_quantity' => trim($sheet->getCell('U' . $rowIndex)->getCalculatedValue()),
-                        'pallet' => $Pallet,
-                        'item_name' => trim($sheet->getCell('F' . $rowIndex + 1)->getCalculatedValue())
-                    ];
-
-                    $rowIndex += 2;
+                // periksa tipe template
+                $templateType = 1;
+                if ($sheet->getCell('A3')->getCalculatedValue()) {
+                    $templateType = 2;
                 }
 
-                try {
-                    DB::connection('sqlsrv_wms')->beginTransaction();
-                    DB::connection('sqlsrv_wms')->table('receive_p_l_s')
-                        ->whereNull('deleted_at')->where('delivery_doc', $DONumber)
-                        ->update(['deleted_by' => 'ane', 'deleted_at' => date('Y-m-d H:i:s')]);
+                if ($templateType == 1) {
+                    while (!empty($sheet->getCell('F' . $rowIndex)->getCalculatedValue())) { // patokan dari kolom F                
+                        $_pallet = trim($sheet->getCell('AI' . $rowIndex)->getCalculatedValue());
+                        if ($Pallet != $_pallet && $_pallet != '') {
+                            $Pallet = trim($sheet->getCell('AI' . $rowIndex)->getCalculatedValue());
+                        }
 
-                    $TOTAL_COLUMN = 8;
-                    $insert_data = collect($data);
-                    $chunks = $insert_data->chunk(2000 / $TOTAL_COLUMN);
-                    foreach ($chunks as $chunk) {
-                        DB::connection('sqlsrv_wms')->table('receive_p_l_s')->insert($chunk->toArray());
+                        $_date = trim($sheet->getCell('M' . $rowIndex)->getValue());
+                        $_date_o = \Carbon\Carbon::instance(Date::excelToDateTimeObject($_date));
+
+                        $data[] = [
+                            'delivery_doc' => $DONumber,
+                            'created_by' => 'ane',
+                            'created_at' => date('Y-m-d H:i:s'),
+                            'item_code' => trim($sheet->getCell('F' . $rowIndex)->getCalculatedValue()),
+                            'delivery_date' => $_date_o->format('Y-m-d'),
+                            'delivery_quantity' => str_replace(',', '', trim($sheet->getCell('P' . $rowIndex)->getCalculatedValue())),
+                            'ship_quantity' => trim($sheet->getCell('U' . $rowIndex)->getCalculatedValue()),
+                            'pallet' => $Pallet,
+                            'item_name' => trim($sheet->getCell('F' . $rowIndex + 1)->getCalculatedValue())
+                        ];
+
+                        $rowIndex += 2;
                     }
-                    DB::connection('sqlsrv_wms')->commit();
-                } catch (Exception $e) {
-                    DB::connection('sqlsrv_wms')->rollBack();
-                    return response()->json(['message' => $e->getMessage()], 400);
+                } else {
+                    $rowIndex = 4;
+                    $DONumber = $sheet->getCell('J' . $rowIndex)->getCalculatedValue();
+                    while (!empty($sheet->getCell('F' . $rowIndex)->getCalculatedValue())) { // patokan dari kolom F                
+                        $_pallet = '';
+
+                        $_date = trim($sheet->getCell('B' . $rowIndex)->getValue());
+                        $_date_o = \Carbon\Carbon::instance(Date::excelToDateTimeObject($_date));
+
+                        $_qty = str_replace(',', '', trim($sheet->getCell('F' . $rowIndex)->getCalculatedValue()));
+                        $data[] = [
+                            'delivery_doc' => $DONumber,
+                            'created_by' => 'ane',
+                            'created_at' => date('Y-m-d H:i:s'),
+                            'item_code' => trim($sheet->getCell('C' . $rowIndex)->getCalculatedValue()),
+                            'delivery_date' => $_date_o->format('Y-m-d'),
+                            'delivery_quantity' => $_qty,
+                            'ship_quantity' => $_qty,
+                            'pallet' => $Pallet,
+                            'item_name' => ''
+                        ];
+
+                        $rowIndex++;
+                    }
+                }
+
+                if ($data) {
+                    try {
+                        DB::connection('sqlsrv_wms')->beginTransaction();
+                        DB::connection('sqlsrv_wms')->table('receive_p_l_s')
+                            ->whereNull('deleted_at')->where('delivery_doc', $DONumber)
+                            ->update(['deleted_by' => 'ane', 'deleted_at' => date('Y-m-d H:i:s')]);
+
+                        $TOTAL_COLUMN = 8;
+                        $insert_data = collect($data);
+                        $chunks = $insert_data->chunk(2000 / $TOTAL_COLUMN);
+                        foreach ($chunks as $chunk) {
+                            DB::connection('sqlsrv_wms')->table('receive_p_l_s')->insert($chunk->toArray());
+                        }
+                        DB::connection('sqlsrv_wms')->commit();
+                    } catch (Exception $e) {
+                        DB::connection('sqlsrv_wms')->rollBack();
+                        return response()->json(['message' => $e->getMessage()], 400);
+                    }
+                } else {
+                    return response()->json(['message' => 'Sorry we could not recognize the template file'], 400);
                 }
             }
         }
@@ -94,6 +130,7 @@ class ReceivePackingListController extends Controller
     {
         $data0 = DB::connection('sqlsrv_wms')->table('receive_p_l_s')
             ->whereNull('deleted_at')
+            ->where('item_name', '!=', '')
             ->select('delivery_doc', 'item_code', 'item_name');
 
         $data = DB::connection('sqlsrv_wms')->query()->fromSub($data0, 'v1')
