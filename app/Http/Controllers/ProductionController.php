@@ -1801,11 +1801,17 @@ class ProductionController extends Controller
             ->union($__suppliedMaterial)->get();
 
         if ($scannedLabels->count() > 0) {
+            $_isFound = false;
             foreach ($scannedLabels as $label) {
                 if ($label->ITMCD != $label->MITMCD) {
+                    $_isFound = true;
                     $data['partCode'] = $label->MITMCD;
                     $data['partCodeArray'] = [$label->MITMCD, $label->ITMCD];
                 }
+            }
+
+            if (!$_isFound) {
+                $data['partCodeArray'] = [$data['partCode']];
             }
         } else {
             $__suppliedMaterial2 = DB::connection('sqlsrv_wms')->table('WMS_SWPS_HIS')
