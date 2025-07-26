@@ -26,14 +26,16 @@ class ReceivePackingListController extends Controller
 
         // 2. Cek apakah ada file yang diupload
         if ($request->hasFile('file_upload')) {
-            $uploadedFiles = $request->file('file_upload'); // Ini akan mengembalikan array objek UploadedFile            
+            $uploadedFiles = $request->file('file_upload'); // Ini akan mengembalikan array objek UploadedFile   
+            $notStandardList = [];
             foreach ($uploadedFiles as $file) {
                 $filePath = $file->getRealPath();
                 $extension = $file->getClientOriginalExtension();
+                $fileName = $file->getClientOriginalName();
                 $reader = IOFactory::createReader(ucfirst($extension));
                 $spreadsheet = $reader->load($filePath);
                 $sheet = $spreadsheet->getActiveSheet();
-                $DONumber = $sheet->getCell('X7')->getCalculatedValue();
+                $DONumber = [];
 
                 $rowIndex = 14;
                 $Pallet = '';
@@ -46,17 +48,52 @@ class ReceivePackingListController extends Controller
                 }
 
                 if ($templateType == 1) {
+
+                    $DONumberHeader = $sheet->getCell('X7')->getCalculatedValue();
+                    if (empty($DONumberHeader)) {
+                        $notStandardList[] = [
+                            'case' => 'template_format',
+                            'message' => 'DO Number is empty, please check the format',
+                            'file' => $fileName
+                        ];
+                        continue;
+                    }
+
+                    $DONumber[] = $DONumberHeader;
                     while (!empty($sheet->getCell('F' . $rowIndex)->getCalculatedValue())) { // patokan dari kolom F                
                         $_pallet = trim($sheet->getCell('AI' . $rowIndex)->getCalculatedValue());
                         if ($Pallet != $_pallet && $_pallet != '') {
                             $Pallet = trim($sheet->getCell('AI' . $rowIndex)->getCalculatedValue());
                         }
 
+                        // validate date
                         $_date = trim($sheet->getCell('M' . $rowIndex)->getValue());
+                        if (empty($_date)) {
+                            $notStandardList[] = [
+                                'case' => 'date',
+                                'message' => 'Date on line ' . $rowIndex . ' is empty',
+                                'file' => $fileName
+                            ];
+                            $rowIndex += 2;
+                            continue;
+                        }
                         $_date_o = \Carbon\Carbon::instance(Date::excelToDateTimeObject($_date));
 
+                        // validate item code                        
+                        $_itemColumnRow2 = $sheet->getCell('F' . $rowIndex + 1)->getCalculatedValue();
+                        if (empty($_itemColumnRow2)) {
+                            $notStandardList[] = [
+                                'case' => 'date',
+                                'message' => 'Column F at row ' . $rowIndex . ' is not as usual, please check the file.',
+                                'file' => $fileName
+                            ];
+                            $rowIndex += 2;
+                            continue;
+                        }
+
+
                         $data[] = [
-                            'delivery_doc' => $DONumber,
+                            'delivery_doc' => $DONumberHeader,
                             'created_by' => 'ane',
                             'created_at' => date('Y-m-d H:i:s'),
                             'item_code' => trim($sheet->getCell('F' . $rowIndex)->getCalculatedValue()),
@@ -71,16 +108,26 @@ class ReceivePackingListController extends Controller
                     }
                 } else {
                     $rowIndex = 4;
-                    $DONumber = $sheet->getCell('J' . $rowIndex)->getCalculatedValue();
+
                     while (!empty($sheet->getCell('F' . $rowIndex)->getCalculatedValue())) { // patokan dari kolom F                
                         $_pallet = '';
 
+                        $_do_number = $sheet->getCell('J' . $rowIndex)->getCalculatedValue();
                         $_date = trim($sheet->getCell('B' . $rowIndex)->getValue());
+                        if (empty($_date)) {
+                            $notStandardList[] = [
+                                'case' => 'date',
+                                'message' => 'Date on line ' . $rowIndex . ' is empty',
+                                'file' => $fileName
+                            ];
+                            $rowIndex++;
+                            continue;
+                        }
                         $_date_o = \Carbon\Carbon::instance(Date::excelToDateTimeObject($_date));
 
                         $_qty = str_replace(',', '', trim($sheet->getCell('F' . $rowIndex)->getCalculatedValue()));
                         $data[] = [
-                            'delivery_doc' => $DONumber,
+                            'delivery_doc' => $_do_number,
                             'created_by' => 'ane',
                             'created_at' => date('Y-m-d H:i:s'),
                             'item_code' => trim($sheet->getCell('C' . $rowIndex)->getCalculatedValue()),
@@ -92,14 +139,17 @@ class ReceivePackingListController extends Controller
                         ];
 
                         $rowIndex++;
+                        $DONumber[] = $_do_number;
                     }
                 }
 
-                if ($data) {
+
+
+                if ($data && empty($notStandardList)) {
                     try {
                         DB::connection('sqlsrv_wms')->beginTransaction();
                         DB::connection('sqlsrv_wms')->table('receive_p_l_s')
-                            ->whereNull('deleted_at')->where('delivery_doc', $DONumber)
+                            ->whereNull('deleted_at')->whereIn('delivery_doc', $DONumber)
                             ->update(['deleted_by' => 'ane', 'deleted_at' => date('Y-m-d H:i:s')]);
 
                         $TOTAL_COLUMN = 8;
@@ -111,11 +161,19 @@ class ReceivePackingListController extends Controller
                         DB::connection('sqlsrv_wms')->commit();
                     } catch (Exception $e) {
                         DB::connection('sqlsrv_wms')->rollBack();
-                        return response()->json(['message' => $e->getMessage()], 400);
+                        return response()->json([
+                            'message' => $e->getMessage(),
+                            'data' => $notStandardList,
+                            'doc' => $DONumberHeader
+                        ], 400);
                     }
-                } else {
-                    return response()->json(['message' => 'Sorry we could not recognize the template file'], 400);
                 }
+            }
+            if ($notStandardList) {
+                return response()->json([
+                    'message' => 'Sorry we could not recognize the template files',
+                    'data' => $notStandardList
+                ], 400);
             }
         }
 
