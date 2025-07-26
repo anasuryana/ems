@@ -136,6 +136,8 @@ class ReceivePackingListController extends Controller
         $data = DB::connection('sqlsrv_wms')->query()->fromSub($data0, 'v1')
             ->leftJoin('MITM_TBL', 'item_code', '=', 'MITM_ITMCD')
             ->whereRaw("item_name!=MITM_SPTNO")
+            ->orderBy('delivery_doc')
+            ->orderBy('item_code')
             ->get(['v1.*', DB::raw("RTRIM(MITM_SPTNO) MITM_SPTNO")]);
         return ['data' => $data];
     }
