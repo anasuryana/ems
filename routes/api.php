@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ConsignmentController;
+use App\Http\Controllers\DisposeItemController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\ICTController;
 use App\Http\Controllers\ItemController;
@@ -116,4 +117,8 @@ Route::get('/welcome', function () {
 Route::prefix('label')->group(function () {
     Route::get('history-tree', [LabelController::class, 'splitTreeHistory']);
     Route::get('history-tree-psn', [ProductionController::class, 'getTreeInside']);
+});
+
+Route::prefix('disposal')->group(function () {
+    Route::get('breakdown', [DisposeItemController::class, 'breakdown']);
 });
