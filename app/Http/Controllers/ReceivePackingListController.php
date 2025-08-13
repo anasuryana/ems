@@ -48,7 +48,6 @@ class ReceivePackingListController extends Controller
                 }
 
                 if ($templateType == 1) {
-
                     $DONumberHeader = $sheet->getCell('X7')->getCalculatedValue();
                     if (empty($DONumberHeader)) {
                         $notStandardList[] = [
@@ -94,7 +93,7 @@ class ReceivePackingListController extends Controller
 
                         $data[] = [
                             'delivery_doc' => $DONumberHeader,
-                            'created_by' => 'ane',
+                            'created_by' => $request->user_id,
                             'created_at' => date('Y-m-d H:i:s'),
                             'item_code' => trim($sheet->getCell('F' . $rowIndex)->getCalculatedValue()),
                             'delivery_date' => $_date_o->format('Y-m-d'),
@@ -128,7 +127,7 @@ class ReceivePackingListController extends Controller
                         $_qty = str_replace(',', '', trim($sheet->getCell('F' . $rowIndex)->getCalculatedValue()));
                         $data[] = [
                             'delivery_doc' => $_do_number,
-                            'created_by' => 'ane',
+                            'created_by' => $request->user_id,
                             'created_at' => date('Y-m-d H:i:s'),
                             'item_code' => trim($sheet->getCell('C' . $rowIndex)->getCalculatedValue()),
                             'delivery_date' => $_date_o->format('Y-m-d'),
@@ -150,7 +149,7 @@ class ReceivePackingListController extends Controller
                         DB::connection('sqlsrv_wms')->beginTransaction();
                         DB::connection('sqlsrv_wms')->table('receive_p_l_s')
                             ->whereNull('deleted_at')->whereIn('delivery_doc', $DONumber)
-                            ->update(['deleted_by' => 'ane', 'deleted_at' => date('Y-m-d H:i:s')]);
+                            ->update(['deleted_by' => $request->user_id, 'deleted_at' => date('Y-m-d H:i:s')]);
 
                         $TOTAL_COLUMN = 8;
                         $insert_data = collect($data);
