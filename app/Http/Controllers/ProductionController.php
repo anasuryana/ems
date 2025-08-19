@@ -864,7 +864,7 @@ class ProductionController extends Controller
                     $_requirement = DB::connection('sqlsrv_wms')->table('VCIMS_MBOM_TBL')
                         ->where('MBOM_MDLCD', $_MDLCD)
                         ->where('MBOM_BOMRV', $_BOMRV)
-                        ->whereIn('MBOM_ITMCD', $data['partCodeArray'])
+                        ->whereIn('MBOM_ITMCD', $data['partCodeArray'] ?? [$data['partCode']])
                         ->whereIn('MBOM_PROCD', $processRequest)
                         ->groupBy('MBOM_ITMCD', 'MBOM_SPART', 'MBOM_PROCD', 'MBOM_MDLCD')
                         ->get([
