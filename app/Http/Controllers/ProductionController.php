@@ -886,7 +886,7 @@ class ProductionController extends Controller
                 $_requirement = DB::connection('sqlsrv_wms')->table('VCIMS_MBOM_TBL')
                     ->where('MBOM_MDLCD', $_MDLCD)
                     ->where('MBOM_BOMRV', $_BOMRV)
-                    ->whereIn('MBOM_ITMCD', $data['partCodeArray'])
+                    ->whereIn('MBOM_ITMCD', $data['partCodeArray'] ?? [$data['partCode']])
                     ->whereIn('MBOM_PROCD', $processRequest)
                     ->groupBy('MBOM_ITMCD', 'MBOM_SPART', 'MBOM_PROCD', 'MBOM_MDLCD')
                     ->get([
@@ -1246,6 +1246,33 @@ class ProductionController extends Controller
             ]);
 
         $scannedLabelID = array_merge($scannedLabelID, $neccessaryCodeFreshO->unique('UNQ')->pluck('UNQ')->toArray());
+
+        // handle scanned but not used
+        foreach ($scannedLabels as $sl) {
+            if ($sl->QTY > 0) {
+                $_isInTheData = false;
+                foreach ($scannedLabelDetails as $sld) {
+                    if ($sl->UNQ == $sld['UNQ']) {
+                        $_isInTheData = true;
+                        break;
+                    }
+                }
+                $scannedLabelDetails[] = [
+                    'ITMCD' => $sl->ITMCD,
+                    'QTY' => $sl->QTY,
+                    'UNQ' => $sl->UNQ,
+                    'LINE' => '',
+                    'CLS_LUPDT' => '',
+                    'CALCULATE_USE' => NULL,
+                    'BALANCE_LABEL' => $sl->QTY,
+                    'RESULT' => '',
+                ];
+
+                if (!in_array($sl->UNQ, $scannedLabelID)) {
+                    $scannedLabelID[] = $sl->UNQ;
+                }
+            }
+        }
 
         $allPart = array_merge($subPartCode, [$data['partCode']]); // part yang sedang dicari dan subpart nya
 
