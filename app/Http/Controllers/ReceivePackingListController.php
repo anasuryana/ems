@@ -61,8 +61,13 @@ class ReceivePackingListController extends Controller
                     $DONumber[] = $DONumberHeader;
                     while (!empty($sheet->getCell('F' . $rowIndex)->getCalculatedValue())) { // patokan dari kolom F                
                         $_pallet = trim($sheet->getCell('AJ' . $rowIndex)->getCalculatedValue());
+
+                        if (empty($_pallet)) {
+                            $_pallet = trim($sheet->getCell('AI' . $rowIndex)->getCalculatedValue());
+                        }
+
                         if ($Pallet != $_pallet && $_pallet != '') {
-                            $Pallet = trim($sheet->getCell('AJ' . $rowIndex)->getCalculatedValue());
+                            $Pallet = $_pallet;
                         }
 
                         // validate date
