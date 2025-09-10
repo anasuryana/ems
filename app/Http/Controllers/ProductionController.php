@@ -1250,16 +1250,9 @@ class ProductionController extends Controller
         // handle scanned but not used
         foreach ($scannedLabels as $sl) {
             if ($sl->QTY > 0) {
-                $_isInTheData = false;
-                foreach ($scannedLabelDetails as $sld) {
-                    if ($sl->UNQ == $sld['UNQ']) {
-                        $_isInTheData = true;
-                        break;
-                    }
-                }
                 $scannedLabelDetails[] = [
                     'ITMCD' => $sl->ITMCD,
-                    'QTY' => $sl->QTY,
+                    'QTY' => $sl->BAKQTY,
                     'UNQ' => $sl->UNQ,
                     'LINE' => '',
                     'CLS_LUPDT' => '',
