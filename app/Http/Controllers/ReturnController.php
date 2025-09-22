@@ -37,6 +37,7 @@ class ReturnController extends Controller
         $dataReturn = DB::connection('sqlsrv_wms')->table('RETSCN_TBL')
             ->where('RETSCN_CNFRMDT', '>=', $request->dateFrom)
             ->where('RETSCN_CNFRMDT', '<=', $request->dateTo)
+            ->whereIn('RETSCN_ITMCD', $request->rm)
             ->groupBy('RETSCN_SPLDOC', 'RETSCN_ITMCD')
             ->select(
                 'RETSCN_SPLDOC',
@@ -46,6 +47,7 @@ class ReturnController extends Controller
             );
 
         $dataReq = DB::connection('sqlsrv_wms')->table("SPL_TBL")
+            ->whereIn('SPL_ITMCD', $request->rm)
             ->groupBy('SPL_DOC', 'SPL_ITMCD')->select(
                 'SPL_DOC',
                 'SPL_ITMCD',
@@ -53,6 +55,7 @@ class ReturnController extends Controller
             );
 
         $dataSup = DB::connection('sqlsrv_wms')->table("SPLSCN_TBL")
+            ->whereIn('SPLSCN_ITMCD', $request->rm)
             ->groupBy('SPLSCN_DOC', 'SPLSCN_ITMCD')->select(
                 'SPLSCN_DOC',
                 'SPLSCN_ITMCD',
