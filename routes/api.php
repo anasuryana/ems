@@ -11,6 +11,7 @@ use App\Http\Controllers\QPITController;
 use App\Http\Controllers\RatingController;
 use App\Http\Controllers\ReceivePackingListController;
 use App\Http\Controllers\RepairDataController;
+use App\Http\Controllers\ReturnController;
 use App\Http\Controllers\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -121,4 +122,11 @@ Route::prefix('label')->group(function () {
 
 Route::prefix('disposal')->group(function () {
     Route::get('breakdown', [DisposeItemController::class, 'breakdown']);
+    Route::get('check-multiple-response', [DisposeItemController::class, 'checkMultipleResponse']);
+    Route::get('upload', [DisposeItemController::class, 'upload']);
+});
+
+# Terkait laporan
+Route::prefix('report')->group(function () {
+    Route::post('logical-balance-return-report', [ReturnController::class, 'generateLogicalBalanceReport']);
 });
