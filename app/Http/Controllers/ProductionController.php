@@ -2612,7 +2612,11 @@ class ProductionController extends Controller
                 ->first();
 
             if ($processMaster->line_category ?? '' == 'HW' || !$processMaster) {
-                $processContextHelper[] = ['PPSN1_PROCD', '=', 'SMT-HW'];
+                if ($request->processContext) {
+                    $processContextHelper[] = ['PPSN1_PROCD', '=', $request->processContext];
+                } else {
+                    $processContextHelper[] = ['PPSN1_PROCD', '=', 'SMT-HW'];
+                }
             } else {
                 $processContextHelper[] = ['PPSN1_LINENO', '=', $request->lineCode];
             }
