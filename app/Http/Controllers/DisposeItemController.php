@@ -201,4 +201,155 @@ class DisposeItemController extends Controller
             );
         return $req->get();
     }
+
+    function checkMultipleResponse(Request $request)
+    {
+        ini_set('max_execution_time', '-1');
+        $results = DB::connection('sqlsrv_wms')->select("
+                    select VX.*,VR.RPSTOCK_QTY,VR.id from (
+                        SELECT
+                        VBC.*,
+                        ISNULL(BOMQT, BOMQT2) BOMQT,
+                        RESPONSEQT + ISNULL(BOMQT, BOMQT2) BAL,
+                        ISNULL(FGQT, FGQT2) FGQT,
+                        ISNULL(BOMQT, BOMQT2) / ISNULL(FGQT, FGQT2) PER,
+                        DELVPURPOSE,
+                        DLV_ZNOMOR_AJU
+                        FROM
+                        (
+                            SELECT
+                            RPSTOCK_REMARK,
+                            RTRIM(RPSTOCK_ITMNUM) RPSTOCK_ITMNUM,
+                            sum(RPSTOCK_QTY) RESPONSEQT
+                            FROM
+                            ZRPSAL_BCSTOCK
+                            WHERE
+                            RPSTOCK_QTY < 0
+                            AND RPSTOCK_ITMNUM in (select compare1.ItemCode from compare1)
+                            GROUP BY
+                            RPSTOCK_REMARK,
+                            RPSTOCK_ITMNUM
+                        ) VBC
+                        LEFT JOIN (
+                            SELECT
+                            DLV_ID,
+                            SERD2_ITMCD,
+                            SUM(SERD2_FGQTY) FGQT,
+                            SUM(SERD2_QTY) BOMQT,
+                            MAX(DLV_PURPOSE) DELVPURPOSE,
+                            MAX(DLV_ZNOMOR_AJU) DLV_ZNOMOR_AJU
+                            FROM
+                            DLV_TBL
+                            LEFT JOIN SERD2_TBL ON DLV_SER = SERD2_SER
+                            WHERE
+                            SERD2_ITMCD in (select compare1.ItemCode from compare1)
+                            GROUP BY
+                            DLV_ID,
+                            SERD2_ITMCD
+                        ) VDELV ON RPSTOCK_REMARK = DLV_ID
+                        AND RPSTOCK_ITMNUM = SERD2_ITMCD
+                        LEFT JOIN (
+                            SELECT
+                            DLV_ID DLV_ID2,
+                            SERD2_ITMCD SERD2_ITMCD2,
+                            SUM(SERD2_FGQTY) FGQT2,
+                            SUM(SERD2_QTY) BOMQT2,
+                            MAX(DLV_PURPOSE) DELVPURPOSE2
+                            FROM
+                            serml_tbl
+                            LEFT JOIN dlv_tbl ON serml_newid = dlv_Ser
+                            LEFT JOIN SERD2_TBL ON serml_comid = serd2_ser
+                            WHERE
+                            serd2_itmcd in (select compare1.ItemCode from compare1)
+                            GROUP BY
+                            DLV_ID,
+                            SERD2_ITMCD
+                        ) VDELV2 ON RPSTOCK_REMARK = DLV_ID2
+                        AND RPSTOCK_ITMNUM = SERD2_ITMCD2
+                        WHERE
+                        abs(ISNULL(RESPONSEQT, 0)/2) = ISNULL(BOMQT, ISNULL(BOMQT2, 0))
+                        ) VX
+                        LEFT JOIN ZRPSAL_BCSTOCK VR ON VX.RPSTOCK_ITMNUM=VR.RPSTOCK_ITMNUM AND VX.RPSTOCK_REMARK=VR.RPSTOCK_REMARK
+                        ORDER BY
+                        VX.RPSTOCK_ITMNUM,VX.RPSTOCK_REMARK
+                ");
+        $_result = collect($results);
+
+        $combinedSet = $_result->map(function ($item) {
+            return [
+                'RPSTOCK_ITMNUM' => $item->RPSTOCK_ITMNUM,
+                'RPSTOCK_REMARK' => $item->RPSTOCK_REMARK,
+                'DLV_ZNOMOR_AJU' => $item->DLV_ZNOMOR_AJU,
+            ];
+        })->unique(function ($item) {
+            return $item['RPSTOCK_ITMNUM'] . '_' . $item['RPSTOCK_REMARK']; // Gabung jadi satu key untuk unik
+        })->values();
+
+
+        // check is contain two rows
+        $resume = [];
+
+        $counter = 0;
+        foreach ($combinedSet as $r) {
+            $_r = $_result->where('RPSTOCK_ITMNUM', $r['RPSTOCK_ITMNUM'])->where('RPSTOCK_REMARK', $r['RPSTOCK_REMARK']);
+            $_countRows = $_r->count();
+
+            if ($_countRows == 2) {
+                $_id = $_r->first()->id;
+
+                $_resume = ['total_rows' => $_countRows, 'params' => $r, 'firstID' => $_id];
+                // $bcstock_row = DB::connection('sqlsrv_it_inventory')->table('RPSAL_BCSTOCK')->where('id', $_id)->first();
+                $affected_rows = DB::connection('sqlsrv_it_inventory')->table('RPSAL_BCSTOCK')->where('id', $_id)->update([
+                    'deleted_at' => date('Y-m-d H:i:s')
+                ]);
+
+                if ($affected_rows) {
+                    // $_resume['status'] = $bcstock_row;
+                    $_resume['updated_at'] = date('Y-m-d H:i:s');
+                } else {
+                    $_resume['status'] = NULL;
+                }
+
+                $resume[] = $_resume;
+                $counter++;
+            } else {
+                if ($_countRows > 2) {
+                    $resume[] = ['total_rows' => $_countRows, 'params' => $r, 'firstID' => $_r->first()->id, 'status' => 'not-restored'];
+                    $counter++;
+                }
+            }
+
+            if ($counter == 1000) break;
+        }
+
+        return ['resume' => $resume];
+    }
+
+    function upload()
+    {
+        $base = json_decode(Storage::disk('public')->get('to_upload2.json'), FALSE);
+
+        $uniqueItem = [];
+        $tobeSaved = [];
+        foreach ($base as $r) {
+            if (!in_array($r->item_code, $uniqueItem)) {
+                $uniqueItem[] = $r->item_code;
+                $tobeSaved[] = [
+                    'ItemCode' => $r->item_code,
+                    'Candidate_Dispose' => $r->plan_qty_dispose,
+                    'balance_from_all' => $r->balance_from_all,
+                    'Remark' => $r->remark,
+                ];
+            }
+        }
+
+        if (!empty($uniqueItem)) {
+            $chunks = collect($tobeSaved)->chunk(2000 / 4);
+            foreach ($chunks as $chunk) {
+                DB::connection('sqlsrv_wms')->table("compare1")->insert($chunk->toArray());
+            }
+        }
+
+        return ['data' => $tobeSaved];
+    }
 }
