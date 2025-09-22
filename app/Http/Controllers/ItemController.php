@@ -21,4 +21,24 @@ class ItemController extends Controller
 
         return ['data' => $processes, 'reff' => $data];
     }
+
+    function synchronizeXRayItem()
+    {
+        $data = DB::connection('sqlsrv_wms')->table('MITM_TBL')->leftJoin('YMITM_V', 'MITM_ITMCD', '=', 'item_code')
+            ->whereRaw("MITM_SPTNO!=item_name")
+            ->get([
+                DB::raw('RTRIM(MITM_ITMCD) MITM_ITMCD'),
+                DB::raw('RTRIM(MITM_SPTNO) MITM_SPTNO'),
+                'item_name'
+            ]);
+
+        $affectedRows = 0;
+        foreach ($data as $r) {
+            $affectedRows += DB::connection('mysql_xray')->table('items')
+                ->where('item_code', $r->MITM_ITMCD)
+                ->update(['item_name' => $r->MITM_SPTNO]);
+        }
+
+        return ['data' => $data, 'Affected Rows' => $affectedRows];
+    }
 }

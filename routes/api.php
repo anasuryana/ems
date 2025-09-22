@@ -100,6 +100,7 @@ Route::prefix('consignment')->group(function () {
 });
 Route::prefix('item')->group(function () {
     Route::get('process', [ItemController::class, 'getProcess']);
+    Route::get('sync-part-name-to-xray', [ItemController::class, 'synchronizeXRayItem']);
 });
 
 Route::prefix('receiving')->group(function () {
