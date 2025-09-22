@@ -201,7 +201,7 @@ class ReceivePackingListController extends Controller
                         $TOTAL_COLUMN = 8;
                         $insert_data = collect($data);
 
-                        $resume = $insert_data->groupBy('item_code')->map(function ($items, $itemCode) {
+                        $resume = $templateType === 3 ? $insert_data->groupBy('item_code')->map(function ($items, $itemCode) {
                             return [
                                 'delivery_doc' => $items->first()['delivery_doc'],
                                 'created_by' => $items->first()['created_by'],
@@ -213,7 +213,7 @@ class ReceivePackingListController extends Controller
                                 'item_name' => '',
                                 'pallet' => ''
                             ];
-                        })->values();
+                        })->values() : $insert_data;
 
 
                         $chunks = $resume->chunk(2000 / $TOTAL_COLUMN);
