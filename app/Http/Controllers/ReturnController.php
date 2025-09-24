@@ -79,9 +79,9 @@ class ReturnController extends Controller
             })->leftJoinSub($dataSup, 'v2', function ($join) {
                 $join->on('SPL_DOC', '=', 'SPLSCN_DOC')->on('SPL_ITMCD', '=', 'SPLSCN_ITMCD');
             })
+            ->orderBy('SPL_ITMCD')
+            ->orderBy('SPL_DOC')
             ->orderBy('RETSCN_CNFRMDT_MAX')
-            ->orderBy('RETSCN_SPLDOC')
-            ->orderBy('RETSCN_ITMCD')
             ->get([
                 'sub_ret.*',
                 'SPL_DOC',
@@ -103,6 +103,33 @@ class ReturnController extends Controller
             $rowAt++;
         }
 
+
+        $applyRange = "A2:E{$rowAt}";     // Sesuaikan kolom akhir
+
+        // 5) Conditional Formatting untuk 'a' → biru muda
+        $condA = new Conditional();
+        $condA->setConditionType(Conditional::CONDITION_EXPRESSION);
+        // Pakai formula tahan spasi/kapital:
+        $condA->addCondition('UPPER(TRIM($C2))="201425500"');
+        $condA->getStyle()->getFill()
+            ->setFillType(Fill::FILL_SOLID)
+            ->getStartColor()->setARGB($this->generateRandomColor()); // biru muda (ARGB)
+
+        // 6) Conditional Formatting untuk 'b' → hijau muda
+        $condB = new Conditional();
+        $condB->setConditionType(Conditional::CONDITION_EXPRESSION);
+        $condB->addCondition('UPPER(TRIM($C2))="218399100"');
+        $condB->getStyle()->getFill()
+            ->setFillType(Fill::FILL_SOLID)
+            ->getStartColor()->setARGB($this->generateRandomColor()); // hijau muda (ARGB)
+
+        // 7) Pasang kedua kondisi ke range baris data
+        $conditionalStyles = $sheet->getStyle($applyRange)->getConditionalStyles();
+        $conditionalStyles[] = $condA;
+        $conditionalStyles[] = $condB;
+        $sheet->getStyle($applyRange)->setConditionalStyles($conditionalStyles);
+
+
         foreach (range('A', 'Z') as $r) {
             $sheet->getColumnDimension($r)->setAutoSize(true);
         }
@@ -118,5 +145,13 @@ class ReturnController extends Controller
         header('Cache-Control: max-age=0');
         header('Access-Control-Allow-Origin: *');
         $writer->save('php://output');
+    }
+
+    function generateRandomColor()
+    {
+        // Generate a random hex color code
+        $randomColor = sprintf('%02X%02X%02X', rand(180, 255), rand(180, 255), rand(180, 255));
+
+        return $randomColor;
     }
 }
