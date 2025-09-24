@@ -37,7 +37,6 @@ class ReturnController extends Controller
         $dataReturn = DB::connection('sqlsrv_wms')->table('RETSCN_TBL')
             ->where('RETSCN_CNFRMDT', '>=', $request->dateFrom)
             ->where('RETSCN_CNFRMDT', '<=', $request->dateTo)
-            ->whereIn('RETSCN_ITMCD', $request->rm)
             ->groupBy('RETSCN_SPLDOC', 'RETSCN_ITMCD')
             ->select(
                 'RETSCN_SPLDOC',
@@ -46,8 +45,11 @@ class ReturnController extends Controller
                 DB::raw("SUM(RETSCN_QTYAFT) RETSCN_QTYAFT_SUM"),
             );
 
+        $uniquePSN = $dataReturn->get()->pluck('RETSCN_SPLDOC')->unique()->toArray();
+
         $dataReq = DB::connection('sqlsrv_wms')->table("SPL_TBL")
             ->whereIn('SPL_ITMCD', $request->rm)
+            ->whereIn('SPL_DOC', $uniquePSN)
             ->groupBy('SPL_DOC', 'SPL_ITMCD')->select(
                 'SPL_DOC',
                 'SPL_ITMCD',
