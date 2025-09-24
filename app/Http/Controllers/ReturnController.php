@@ -45,7 +45,16 @@ class ReturnController extends Controller
                 DB::raw("SUM(RETSCN_QTYAFT) RETSCN_QTYAFT_SUM"),
             );
 
-        $uniquePSN = $dataReturn->get()->pluck('RETSCN_SPLDOC')->unique()->toArray();
+        $dataReturnResume = DB::connection('sqlsrv_wms')->table('RETSCN_TBL')
+            ->where('RETSCN_CNFRMDT', '>=', $request->dateFrom)
+            ->where('RETSCN_CNFRMDT', '<=', $request->dateTo)
+            ->groupBy('RETSCN_SPLDOC', 'RETSCN_ITMCD')
+            ->get([
+                'RETSCN_SPLDOC',
+                DB::raw("MAX(RETSCN_CNFRMDT) RETSCN_CNFRMDT_MAX"),
+            ]);
+
+        $uniquePSN = $dataReturnResume->pluck('RETSCN_SPLDOC')->unique()->toArray();
 
         $dataReq = DB::connection('sqlsrv_wms')->table("SPL_TBL")
             ->whereIn('SPL_ITMCD', $request->rm)
@@ -85,11 +94,11 @@ class ReturnController extends Controller
         $rowAt = 4;
         $sheet->freezePane('A' . $rowAt);
         foreach ($data as $r) {
-            $sheet->setCellValue([1, $rowAt], $r->RETSCN_CNFRMDT_MAX);
+            $sheet->setCellValue([1, $rowAt], $r->RETSCN_CNFRMDT_MAX ?? $dataReturnResume->where('RETSCN_SPLDOC', $r->SPL_DOC)->first()->RETSCN_CNFRMDT_MAX);
             $sheet->setCellValue([2, $rowAt], $r->SPL_DOC);
             $sheet->setCellValue([3, $rowAt], $r->SPL_ITMCD);
             $sheet->setCellValue([4, $rowAt], $r->LOGRETQT);
-            $sheet->setCellValue([5, $rowAt], $r->RETSCN_QTYAFT_SUM);
+            $sheet->setCellValue([5, $rowAt], $r->RETSCN_QTYAFT_SUM ?? 0);
             $sheet->setCellValue([6, $rowAt], "=E" . $rowAt . "-D" . $rowAt);
             $rowAt++;
         }
