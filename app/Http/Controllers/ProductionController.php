@@ -340,9 +340,8 @@ class ProductionController extends Controller
             if ($isAlreadyCalculated) {
                 // find on ENG BOMSTX
                 foreach ($finalOutstanding as $r) {
-                    $ENGBOM = DB::connection('sqlsrv_wms')->table('ENG_BOMSTX')
+                    $ENGBOM = DB::connection('sqlsrv_wms')->table('ENG_BOMSTX_UNION_PA100')
                         ->select('MAIN_PART_CODE', 'EPSON_ORG_PART', 'SUB', 'SUB1')
-                        ->where('MODEL_CODE', $request->itemCode)
                         ->where('MAIN_PART_CODE', $r['partCode'])
                         ->get();
                     foreach ($anotherRequirement as &$a) {
@@ -432,9 +431,8 @@ class ProductionController extends Controller
 
                 $__isfound = false;
                 foreach ($finalOutstanding as $r) {
-                    $ENGBOM = DB::connection('sqlsrv_wms')->table('ENG_BOMSTX')
+                    $ENGBOM = DB::connection('sqlsrv_wms')->table('ENG_BOMSTX_UNION_PA100')
                         ->select('MAIN_PART_CODE', 'EPSON_ORG_PART', 'SUB', 'SUB1')
-                        ->where('MODEL_CODE', $request->itemCode)
                         ->where('MAIN_PART_CODE', $r['partCode'])
                         ->first();
                     if ($ENGBOM) {
@@ -813,7 +811,7 @@ class ProductionController extends Controller
         $xwo = DB::connection('sqlsrv_wms')->table('XWO')
             ->whereIn('PDPP_WONO', $uniqueJobInput)
             ->get([
-                'PDPP_WONO',
+                DB::raw('UPPER(PDPP_WONO) PDPP_WONO'),
                 'PDPP_MDLCD',
                 'PDPP_BOMRV'
             ]);
@@ -839,6 +837,7 @@ class ProductionController extends Controller
                     $_LUPDT_CLOSING_[] = $h->CLS_LUPDT;
                 }
             }
+
             if (empty($_MDLCD)) {
                 foreach ($xwo as $h) {
                     if ($r['job'] == $h->PDPP_WONO) {
@@ -1006,9 +1005,8 @@ class ProductionController extends Controller
         if (empty($message)) {
             $message = 'OK';
         } else {
-            $ENGBOM = DB::connection('sqlsrv_wms')->table('ENG_BOMSTX')
+            $ENGBOM = DB::connection('sqlsrv_wms')->table('ENG_BOMSTX_UNION_PA100')
                 ->select('MAIN_PART_CODE', 'EPSON_ORG_PART', 'SUB', 'SUB1')
-                ->whereIn('MODEL_CODE', $outstandingItemFGDistinct)
                 ->whereIn('MAIN_PART_CODE', $outstandingItemDistinct)
                 ->get();
 
@@ -1377,6 +1375,40 @@ class ProductionController extends Controller
             ->fromSub($_suppliedMaterial, 'v1')
             ->union($__suppliedMaterial)->get();
 
+        if ($scannedLabels->count() == 0) {
+            $__suppliedMaterial = DB::connection('sqlsrv_wms')->table('WMS_SWPS_HIS')
+                ->whereIn('SWPS_PSNNO', [$data['doc']])
+                ->where('SWPS_REMARK', 'OK')
+                ->whereIn('SWPS_NITMCD', $data['partCodeArray'] ?? [$data['partCode']])
+                ->groupBy('SWPS_NITMCD', 'NQTY', 'SWPS_NUNQ', 'SWPS_NLOTNO')
+                ->select(
+                    DB::raw('RTRIM(SWPS_NITMCD) ITMCD'),
+                    DB::raw('NQTY QTY'),
+                    DB::raw('RTRIM(SWPS_NLOTNO) LOTNO'),
+                    DB::raw('RTRIM(SWPS_NUNQ) UNQ'),
+                    DB::raw('NQTY BAKQTY'),
+                    DB::raw('MAX(RTRIM(SWPS_LINENO)) DEFAULT_LINE'),
+                );
+
+            $_suppliedMaterial = DB::connection('sqlsrv_wms')->table('WMS_SWMP_HIS')
+                ->whereIn('SWMP_PSNNO', [$data['doc']])
+                ->where('SWMP_REMARK', 'OK')
+                ->whereIn('SWMP_ITMCD', $data['partCodeArray'] ?? [$data['partCode']])
+                ->groupBy('SWMP_ITMCD', 'SWMP_QTY', 'SWMP_UNQ', 'SWMP_LOTNO')
+                ->select(
+                    DB::raw('RTRIM(SWMP_ITMCD) ITMCD'),
+                    DB::raw('SWMP_QTY QTY'),
+                    DB::raw('RTRIM(SWMP_LOTNO) LOTNO'),
+                    DB::raw('RTRIM(SWMP_UNQ) UNQ'),
+                    DB::raw('SWMP_QTY BAKQTY'),
+                    DB::raw('MAX(RTRIM(SWMP_LINENO)) DEFAULT_LINE'),
+                );
+
+            $scannedLabels = DB::connection('sqlsrv_wms')->query()
+                ->fromSub($_suppliedMaterial, 'v1')
+                ->union($__suppliedMaterial)->get();
+        }
+
 
         $scannedLabelsAlt = [];
 
@@ -1406,7 +1438,7 @@ class ProductionController extends Controller
         $xwo = DB::connection('sqlsrv_wms')->table('XWO')
             ->whereIn('PDPP_WONO', $uniqueJobInput)
             ->get([
-                'PDPP_WONO',
+                DB::raw('UPPER(PDPP_WONO) PDPP_WONO'),
                 'PDPP_MDLCD',
                 'PDPP_BOMRV'
             ]);
@@ -1615,9 +1647,8 @@ class ProductionController extends Controller
         if (empty($message)) {
             $message = 'OK';
         } else {
-            $ENGBOM = DB::connection('sqlsrv_wms')->table('ENG_BOMSTX')
+            $ENGBOM = DB::connection('sqlsrv_wms')->table('ENG_BOMSTX_UNION_PA100')
                 ->select('MAIN_PART_CODE', 'EPSON_ORG_PART', 'SUB', 'SUB1')
-                ->whereIn('MODEL_CODE', $outstandingItemFGDistinct)
                 ->whereIn('MAIN_PART_CODE', $outstandingItemDistinct)
                 ->get();
 
@@ -2210,9 +2241,8 @@ class ProductionController extends Controller
         if (empty($message)) {
             $message = 'OK';
         } else {
-            $ENGBOM = DB::connection('sqlsrv_wms')->table('ENG_BOMSTX')
+            $ENGBOM = DB::connection('sqlsrv_wms')->table('ENG_BOMSTX_UNION_PA100')
                 ->select('MAIN_PART_CODE', 'EPSON_ORG_PART', 'SUB', 'SUB1')
-                ->whereIn('MODEL_CODE', $outstandingItemFGDistinct)
                 ->whereIn('MAIN_PART_CODE', $outstandingItemDistinct)
                 ->get();
             if ($ENGBOM) {
