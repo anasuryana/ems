@@ -63,7 +63,7 @@ class ReturnController extends Controller
             );
 
         $data = DB::connection('sqlsrv_wms')->query()->fromSub($dataReturn, 'sub_ret')
-            ->leftJoinSub($dataReq, 'v1', function ($join) {
+            ->rightJoinSub($dataReq, 'v1', function ($join) {
                 $join->on('RETSCN_SPLDOC', '=', 'SPL_DOC')->on('RETSCN_ITMCD', '=', 'SPL_ITMCD');
             })->leftJoinSub($dataSup, 'v2', function ($join) {
                 $join->on('SPL_DOC', '=', 'SPLSCN_DOC')->on('SPL_ITMCD', '=', 'SPLSCN_ITMCD');
@@ -71,14 +71,21 @@ class ReturnController extends Controller
             ->orderBy('RETSCN_CNFRMDT_MAX')
             ->orderBy('RETSCN_SPLDOC')
             ->orderBy('RETSCN_ITMCD')
-            ->get(['sub_ret.*', 'REQQT', 'SUPQT', DB::raw("ISNULL(SUPQT,0)-ISNULL(REQQT,0) LOGRETQT")]);
+            ->get([
+                'sub_ret.*',
+                'SPL_DOC',
+                'SPL_ITMCD',
+                'REQQT',
+                'SUPQT',
+                DB::raw("ISNULL(SUPQT,0)-ISNULL(REQQT,0) LOGRETQT")
+            ]);
 
         $rowAt = 4;
         $sheet->freezePane('A' . $rowAt);
         foreach ($data as $r) {
             $sheet->setCellValue([1, $rowAt], $r->RETSCN_CNFRMDT_MAX);
-            $sheet->setCellValue([2, $rowAt], $r->RETSCN_SPLDOC);
-            $sheet->setCellValue([3, $rowAt], $r->RETSCN_ITMCD);
+            $sheet->setCellValue([2, $rowAt], $r->SPL_DOC);
+            $sheet->setCellValue([3, $rowAt], $r->SPL_ITMCD);
             $sheet->setCellValue([4, $rowAt], $r->LOGRETQT);
             $sheet->setCellValue([5, $rowAt], $r->RETSCN_QTYAFT_SUM);
             $sheet->setCellValue([6, $rowAt], "=E" . $rowAt . "-D" . $rowAt);
