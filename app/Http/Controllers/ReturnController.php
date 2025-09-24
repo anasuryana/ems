@@ -106,29 +106,22 @@ class ReturnController extends Controller
 
         $applyRange = "A2:E{$rowAt}";     // Sesuaikan kolom akhir
 
-        // 5) Conditional Formatting untuk 'a' → biru muda
-        $condA = new Conditional();
-        $condA->setConditionType(Conditional::CONDITION_EXPRESSION);
-        // Pakai formula tahan spasi/kapital:
-        $condA->addCondition('UPPER(TRIM($C2))="201425500"');
-        $condA->getStyle()->getFill()
-            ->setFillType(Fill::FILL_SOLID)
-            ->getStartColor()->setARGB($this->generateRandomColor()); // biru muda (ARGB)
-
-        // 6) Conditional Formatting untuk 'b' → hijau muda
-        $condB = new Conditional();
-        $condB->setConditionType(Conditional::CONDITION_EXPRESSION);
-        $condB->addCondition('UPPER(TRIM($C2))="218399100"');
-        $condB->getStyle()->getFill()
-            ->setFillType(Fill::FILL_SOLID)
-            ->getStartColor()->setARGB($this->generateRandomColor()); // hijau muda (ARGB)
-
-        // 7) Pasang kedua kondisi ke range baris data
+        //  Pasang kedua kondisi ke range baris data
         $conditionalStyles = $sheet->getStyle($applyRange)->getConditionalStyles();
-        $conditionalStyles[] = $condA;
-        $conditionalStyles[] = $condB;
-        $sheet->getStyle($applyRange)->setConditionalStyles($conditionalStyles);
 
+        foreach ($request->rm as $r) {
+            // Conditional Formatting untuk 'a' → biru muda
+            $condA = new Conditional();
+            $condA->setConditionType(Conditional::CONDITION_EXPRESSION);
+            // Pakai formula tahan spasi/kapital:
+            $condA->addCondition('UPPER(TRIM($C2))="' . $r . '"');
+            $condA->getStyle()->getFill()
+                ->setFillType(Fill::FILL_SOLID)
+                ->getStartColor()->setARGB($this->generateRandomColor()); // biru muda (ARGB)
+            $conditionalStyles[] = $condA;
+        }
+
+        $sheet->getStyle($applyRange)->setConditionalStyles($conditionalStyles);
 
         foreach (range('A', 'Z') as $r) {
             $sheet->getColumnDimension($r)->setAutoSize(true);
