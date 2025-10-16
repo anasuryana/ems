@@ -198,7 +198,7 @@ class ReceivePackingListController extends Controller
                             ->whereNull('deleted_at')->whereIn('delivery_doc', $DONumber)
                             ->update(['deleted_by' => $request->user_id, 'deleted_at' => date('Y-m-d H:i:s')]);
 
-                        $TOTAL_COLUMN = 8;
+                        $TOTAL_COLUMN = 9;
                         $insert_data = collect($data);
 
                         $resume = $templateType === 3 ? $insert_data->groupBy('item_code')->map(function ($items, $itemCode) {
@@ -226,7 +226,7 @@ class ReceivePackingListController extends Controller
                         return response()->json([
                             'message' => $e->getMessage(),
                             'data' => $notStandardList,
-                            'doc' => $DONumberHeader
+                            'doc' => $DONumberHeader ?? 'NODO FOUND'
                         ], 400);
                     }
                 }
