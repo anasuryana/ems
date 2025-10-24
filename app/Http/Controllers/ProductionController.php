@@ -1371,9 +1371,13 @@ class ProductionController extends Controller
                 DB::raw('MAX(RTRIM(SWMP_LINENO)) DEFAULT_LINE'),
             );
 
-        $scannedLabels = DB::connection('sqlsrv_wms')->query()
+        $scannedLabels_ = DB::connection('sqlsrv_wms')->query()
             ->fromSub($_suppliedMaterial, 'v1')
-            ->union($__suppliedMaterial)->get();
+            ->union($__suppliedMaterial);
+
+        $scannedLabels = DB::connection('sqlsrv_wms')->query()->fromSub($scannedLabels_, 'temporari')
+            ->groupBy('ITMCD', 'QTY', 'LOTNO', 'UNQ', 'BAKQTY')
+            ->get(['ITMCD', 'QTY', 'LOTNO', 'UNQ', 'BAKQTY', DB::raw("MAX(DEFAULT_LINE) DEFAULT_LINE")]);
 
         if ($scannedLabels->count() == 0) {
             $__suppliedMaterial = DB::connection('sqlsrv_wms')->table('WMS_SWPS_HIS')
@@ -1977,7 +1981,6 @@ class ProductionController extends Controller
             'dataReff' => $neccessaryCodeO,
             'message' => $message,
             'dataFreshReff' => $neccessaryCodeFreshO,
-            '$anotherRequirementLineContext' => $anotherRequirementLineContext
         ];
     }
 
